@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone, timedelta
 import base64
 import json
 import os
@@ -13,6 +13,20 @@ st.set_page_config(
 UPLOADS_DIR = "uploads"
 if not os.path.exists(UPLOADS_DIR):
     os.makedirs(UPLOADS_DIR)
+
+
+# -------------------------------------------------------------
+# FUNÇÃO PARA OBTER A DATA E HORA NO HORÁRIO DE BRASÍLIA (UTC-3)
+# -------------------------------------------------------------
+def obter_agora_brasilia():
+    fuso_brasilia = timezone(timedelta(hours=-3))
+    return datetime.now(fuso_brasilia)
+
+def formatar_data_hora():
+    return obter_agora_brasilia().strftime("%d/%m/%Y às %H:%M")
+
+def formatar_apenas_data():
+    return obter_agora_brasilia().strftime("%d/%m/%Y")
 
 
 # -------------------------------------------------------------
@@ -205,8 +219,8 @@ DEFAULT_OPCOES_SENTIMENTOS = {
 }
 DEFAULT_RECADO = {
     "hoje": "Não se esquece de tomar seu psyllium e tô morrendo de saudade de você! 💕",
-    "data_hora_hoje": datetime.now().strftime("%d/%m/%Y às %H:%M"),
-    "data_dia": datetime.now().strftime("%d/%m/%Y"),
+    "data_hora_hoje": formatar_data_hora(),
+    "data_dia": formatar_apenas_data(),
     "imagem_hoje": "",
     "resposta_larissa": "",
     "imagem_resposta_larissa": "",
@@ -217,7 +231,7 @@ DEFAULT_MUSICAS = [
     {
         "nome": "Nossa Música Favorita",
         "link": "https://open.spotify.com/track/4cOdK2wGLETKBW3PvgPWqT",
-        "data_hora": datetime.now().strftime("%d/%m/%Y às %H:%M"),
+        "data_hora": formatar_data_hora(),
         "autor": "Vitória",
     }
 ]
@@ -225,7 +239,7 @@ DEFAULT_FOTOS = [
     {
         "url": "https://images.unsplash.com/photo-1516589178581-6cd7833ae3b2?q=80&w=600",
         "legenda": "Nosso passeio favorito 🌿",
-        "data_hora": datetime.now().strftime("%d/%m/%Y às %H:%M"),
+        "data_hora": formatar_data_hora(),
     }
 ]
 DEFAULT_DATAS = [
@@ -233,7 +247,7 @@ DEFAULT_DATAS = [
         "titulo": "Primeiro Encontro",
         "data": "12/05/2023",
         "icone": "🥂",
-        "data_hora_adicionado": datetime.now().strftime("%d/%m/%Y às %H:%M"),
+        "data_hora_adicionado": formatar_data_hora(),
         "autor": "Nós",
     }
 ]
@@ -388,7 +402,7 @@ with tab_sentimento:
     st.markdown("---")
     st.subheader("Marque como você está se sentindo agora:")
 
-    data_agora = datetime.now().strftime("%d/%m/%Y às %H:%M")
+    data_agora = formatar_data_hora()
 
     if st.session_state.usuario_atual == "larissa":
         novo_larissa = []
@@ -506,19 +520,18 @@ with tab_sentimento:
                     st.rerun()
 
 # =============================================================
-# ABA 2: RECADO (COM MUDANÇA AUTOMÁTICA DE DIA + LINK/UPLOAD DE FOTO)
+# ABA 2: RECADO (FUSO BRASÍLIA + ARQUIVAMENTO AUTOMÁTICO)
 # =============================================================
 with tab_recado:
     st.header("☀️ Lembrete pro meu cheirinho")
 
     recados = carregar_json(FILE_RECADO, DEFAULT_RECADO)
 
-    # LÓGICA DE VIRADA DE DIA AUTOMÁTICA
-    hoje_str = datetime.now().strftime("%d/%m/%Y")
+    hoje_br = formatar_apenas_data()
     data_recado = recados.get("data_dia", "")
 
-    if data_recado and data_recado != hoje_str and recados.get("hoje"):
-        # O recado pertence a um dia anterior -> move para o histórico!
+    # MUDANÇA DE DIA AUTOMÁTICA -> MOVE PARA O HISTÓRICO
+    if data_recado and data_recado != hoje_br and recados.get("hoje"):
         if "historico" not in recados:
             recados["historico"] = []
 
@@ -543,16 +556,16 @@ with tab_recado:
         recados["imagem_resposta_larissa"] = ""
         recados["data_hora_resposta"] = ""
         recados["data_hora_hoje"] = ""
-        recados["data_dia"] = hoje_str
+        recados["data_dia"] = hoje_br
         salvar_json(FILE_RECADO, recados)
 
-    # GARANTE DATA/HORA EXIBIDA
+    # GARANTE DATA E HORA DE BRASÍLIA SE ESTIVER VAZIO
     if recados.get("hoje") and not recados.get("data_hora_hoje"):
-        recados["data_hora_hoje"] = datetime.now().strftime("%d/%m/%Y às %H:%M")
-        recados["data_dia"] = hoje_str
+        recados["data_hora_hoje"] = formatar_data_hora()
+        recados["data_dia"] = hoje_br
         salvar_json(FILE_RECADO, recados)
 
-    # EXIBIÇÃO DO RECADO ATUAL DO DIA
+    # EXIBE RECADO PRINCIPAL
     if recados.get("hoje"):
         st.info(f"### {recados.get('hoje', '')}")
         st.caption(f"🕒 **Publicado em:** {recados.get('data_hora_hoje', '')}")
@@ -565,22 +578,23 @@ with tab_recado:
     else:
         st.info("### Nenhum lembrete publicado para hoje ainda!")
 
-    # RESPOSTA DA LARISSA
+    # EXIBE RESPOSTA DA LARISSA COM HORA DE BRASÍLIA
     resp_atual = recados.get("resposta_larissa", "")
     img_resp_atual = recados.get("imagem_resposta_larissa", "")
 
     if resp_atual or img_resp_atual:
+        st.markdown("---")
         st.markdown("#### 👇 Resposta da Larissa:")
         if resp_atual:
             st.success(f"💬 **Larissa:** {resp_atual}")
         if recados.get("data_hora_resposta"):
-            st.caption(f"🕒 Respondido em: {recados.get('data_hora_resposta')}")
+            st.caption(f"🕒 **Respondido em:** {recados.get('data_hora_resposta')}")
         if img_resp_atual:
             img_resp_obj = carregar_imagem_correta(img_resp_atual)
             if img_resp_obj:
                 st.image(img_resp_obj, width=250, caption="Foto da Larissa 🌸")
 
-    # PERFIL LARISSA: RESPOSTA COM FILE UPLOAD OU LINK DA WEB
+    # PERFIL LARISSA: CAIXA DE RESPOSTA COM REGISTRO DE DATA E HORA
     if st.session_state.usuario_atual == "larissa":
         st.markdown("---")
         st.markdown("### 👇 Resposta da Larissa:")
@@ -596,7 +610,6 @@ with tab_recado:
             ["📁 Enviar Arquivo", "🔗 Colar Link de Imagem"]
         )
 
-        img_resposta_final = resp_atual
         up_img_resp = None
         url_img_resp = ""
 
@@ -613,9 +626,7 @@ with tab_recado:
 
         if st.button("💌 Enviar Resposta", key="btn_env_resposta"):
             recados["resposta_larissa"] = texto_resposta
-            recados["data_hora_resposta"] = datetime.now().strftime(
-                "%d/%m/%Y às %H:%M"
-            )
+            recados["data_hora_resposta"] = formatar_data_hora()
 
             if up_img_resp is not None:
                 file_path = os.path.join(
@@ -631,7 +642,7 @@ with tab_recado:
             st.success("Sua resposta foi enviada com sucesso! 💕")
             st.rerun()
 
-    # PERFIL VITÓRIA: PUBLICAR NOVO LEMBRETE DO DIA (FILE OU LINK URL)
+    # PERFIL VITÓRIA: PUBLICAR NOVO LEMBRETE
     if st.session_state.usuario_atual == "vitoria":
         st.markdown("---")
         st.subheader("✍️ Publicar Novo Lembrete Do Dia")
@@ -662,13 +673,11 @@ with tab_recado:
             )
 
         if st.button("💌 Publicar Lembrete Hoje", key="btn_pub_lembrete_vit"):
-            # Move anterior para o histórico se for do mesmo dia substituído manual
             if recados.get("hoje"):
                 historico_item = {
                     "recado": recados.get("hoje", ""),
                     "data_hora_hoje": recados.get(
-                        "data_hora_hoje",
-                        datetime.now().strftime("%d/%m/%Y às %H:%M"),
+                        "data_hora_hoje", formatar_data_hora()
                     ),
                     "imagem_hoje": recados.get("imagem_hoje", ""),
                     "resposta_larissa": recados.get("resposta_larissa", ""),
@@ -682,10 +691,8 @@ with tab_recado:
                 recados["historico"].insert(0, historico_item)
 
             recados["hoje"] = novo_recado_vit
-            recados["data_hora_hoje"] = datetime.now().strftime(
-                "%d/%m/%Y às %H:%M"
-            )
-            recados["data_dia"] = datetime.now().strftime("%d/%m/%Y")
+            recados["data_hora_hoje"] = formatar_data_hora()
+            recados["data_dia"] = formatar_apenas_data()
 
             if up_img_vit_direto is not None:
                 file_path = os.path.join(
@@ -707,7 +714,7 @@ with tab_recado:
             st.success("Novo lembrete publicado no app!")
             st.rerun()
 
-    # HISTÓRICO DE RECADOS
+    # HISTÓRICO COMPLETO DE RECADOS
     st.markdown("---")
     with st.expander("📜 Histórico de Recados Anteriores", expanded=False):
         historico = recados.get("historico", [])
@@ -812,7 +819,7 @@ with tab_musicas:
                 if st.session_state.usuario_atual == "larissa"
                 else "Vitória"
             )
-            data_agora = datetime.now().strftime("%d/%m/%Y às %H:%M")
+            data_agora = formatar_data_hora()
 
             musicas.append(
                 {
@@ -898,7 +905,7 @@ with tab_fotos:
             ["📁 Enviar do PC/Galeria do Celular", "🔗 Usar Link da Web"]
         )
 
-        data_agora = datetime.now().strftime("%d/%m/%Y às %H:%M")
+        data_agora = formatar_data_hora()
 
         with tab_up1:
             uploaded_file = st.file_uploader(
@@ -1019,7 +1026,7 @@ with tab_datas:
 
     if st.button("➕ Adicionar Data", key="btn_add_data_geral"):
         if add_d_tit and add_d_dt:
-            data_agora = datetime.now().strftime("%d/%m/%Y às %H:%M")
+            data_agora = formatar_data_hora()
             quem_enviou = (
                 "Larissa"
                 if st.session_state.usuario_atual == "larissa"
@@ -1130,7 +1137,7 @@ with tab_comidas:
                 if st.session_state.usuario_atual == "larissa"
                 else "Vitória"
             )
-            data_agora = datetime.now().strftime("%d/%m/%Y às %H:%M")
+            data_agora = formatar_data_hora()
             cat_nome = (
                 "Receita em Casa"
                 if "Receita" in tipo_comida_sug
@@ -1255,7 +1262,7 @@ with tab_dates:
                 if st.session_state.usuario_atual == "larissa"
                 else "Vitória"
             )
-            data_agora = datetime.now().strftime("%d/%m/%Y às %H:%M")
+            data_agora = formatar_data_hora()
             cat_nome = "Em Casa" if "Casa" in tipo_date_sug else "Fora de Casa"
             texto_formatado = (
                 f"{sugestao_date} (Sugerido por {quem_enviou} em {data_agora})"
