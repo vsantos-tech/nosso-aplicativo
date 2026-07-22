@@ -5,7 +5,7 @@ from datetime import datetime, timedelta, timezone
 from PIL import Image, ImageOps
 import streamlit as st
 
-# Configuração da página (Modificado para 'wide' para expandir na tela inteira)
+# Configuração da página em tela cheia
 st.set_page_config(
     page_title="Nosso Aplicativo 💗", page_icon="💗", layout="wide"
 )
@@ -48,7 +48,7 @@ def carregar_imagem_correta(caminho_ou_url):
 
 
 # -------------------------------------------------------------
-# ESTILIZAÇÃO E EXPANSÃO TOTAL (REMOÇÃO DA BORDA BRANCA SUPERIOR)
+# ESTILIZAÇÃO COMPLETA DE TELA CHEIA (CORREÇÃO DA BORDA BRANCA)
 # -------------------------------------------------------------
 def carregar_estilo_fundo():
     bg_image_path = None
@@ -66,48 +66,38 @@ def carregar_estilo_fundo():
 
     css = f"""
         <style>
-        /* Zera margens do navegador e preenchimentos do Streamlit */
-        html, body, [data-testid="stAppViewContainer"] {{
-            margin: 0 !important;
-            padding: 0 !important;
-            width: 100vw !important;
+        /* 1. Remove totalmente o cabeçalho nativo e margens superiores do Streamlit */
+        [data-testid="stHeader"], header {{
+            display: none !important;
+            height: 0px !important;
         }}
 
-        /* Remove a borda/espaciamento branco do topo da página */
+        /* 2. Aplica o fundo de tela cheia no contêiner raiz do App */
+        [data-testid="stAppViewContainer"], .stApp {{
+            {bg_style}
+            background-size: cover !important;
+            background-position: center !important;
+            background-repeat: no-repeat !important;
+            background-attachment: fixed !important;
+        }}
+
+        /* 3. Ajusta a área útil de conteúdo para encostar no topo da tela */
         .block-container {{
-            padding-top: 0rem !important;
+            padding-top: 1rem !important;
             padding-bottom: 2rem !important;
-            padding-left: 1.5rem !important;
-            padding-right: 1.5rem !important;
+            padding-left: 1rem !important;
+            padding-right: 1rem !important;
             max-width: 100% !important;
         }}
 
-        /* Esconde elementos nativos do topo que geram espaço em branco */
-        header, 
-        [data-testid="stHeader"], 
+        /* Oculta barras de status e ferramentas */
         [data-testid="stAppToolbar"], 
         [data-testid="stHeaderActionElements"],
-        div[class*="stAppHeader"], 
-        div[class*="stAppToolbar"],
         [data-testid="stStatusWidget"],
-        .viewerBadge_container__1323f,
-        #MainMenu,
-        footer {{
+        [data-testid="stDecoration"],
+        #MainMenu, footer {{
             display: none !important;
             visibility: hidden !important;
-            height: 0px !important;
-        }}
-        
-        [data-testid="stDecoration"] {{ display: none !important; }}
-        
-        .stApp {{
-            {bg_style}
-            background-size: cover;
-            background-position: center;
-            background-repeat: no-repeat;
-            background-attachment: fixed;
-            margin-top: 0px !important;
-            padding-top: 0px !important;
         }}
         
         [data-testid="stSidebar"] {{
@@ -131,8 +121,8 @@ def carregar_estilo_fundo():
             color: #4A1228 !important;
             font-weight: bold;
             border-radius: 8px 8px 0px 0px;
-            padding: 6px 10px !important;
-            font-size: 13px !important;
+            padding: 6px 8px !important;
+            font-size: 12px !important;
             flex-grow: 1 !important;
             text-align: center !important;
             min-width: 0 !important;
@@ -539,7 +529,7 @@ with tab_sentimento:
                     st.rerun()
 
 # =============================================================
-# ABA 2: RECADO (MANTÉM HORÁRIOS SALVOS E REGISTRA NOVOS EM BRASÍLIA)
+# ABA 2: RECADO (COM EXCLUSÃO NO MODO EDIÇÃO)
 # =============================================================
 with tab_recado:
     st.header("☀️ Lembrete pro meu cheirinho")
@@ -584,6 +574,19 @@ with tab_recado:
             img_obj = carregar_imagem_correta(img_hoje)
             if img_obj:
                 st.image(img_obj, use_container_width=True)
+
+        # MODO EDIÇÃO: BOTÃO DE EXCLUIR RECADO DO DIA
+        if e_admin:
+            if st.button("🗑️ Excluir Recado do Dia (Modo Edição)", key="btn_del_recado_hoje"):
+                recados["hoje"] = ""
+                recados["imagem_hoje"] = ""
+                recados["data_hora_hoje"] = ""
+                recados["resposta_larissa"] = ""
+                recados["imagem_resposta_larissa"] = ""
+                recados["data_hora_resposta"] = ""
+                salvar_json(FILE_RECADO, recados)
+                st.success("Recado do dia excluído com sucesso!")
+                st.rerun()
     else:
         st.info("### Nenhum lembrete publicado para hoje ainda!")
 
@@ -605,7 +608,7 @@ with tab_recado:
             if img_resp_obj:
                 st.image(img_resp_obj, width=250, caption="Foto da Larissa 🌸")
 
-    # PERFIL LARISSA: RESPOSTA COM REGISTRO NOVO DE HORÁRIO DE BRASÍLIA
+    # PERFIL LARISSA: RESPOSTA COM REGISTRO PERMANENTE DE DATA E HORA
     if st.session_state.usuario_atual == "larissa":
         st.markdown("---")
         st.markdown("### 👇 Resposta da Larissa:")
@@ -637,7 +640,6 @@ with tab_recado:
 
         if st.button("💌 Enviar Resposta", key="btn_env_resposta"):
             recados["resposta_larissa"] = texto_resposta
-            # Grava o horário oficial de Brasília no momento da resposta
             recados["data_hora_resposta"] = formatar_data_hora()
 
             if up_img_resp is not None:
@@ -654,7 +656,7 @@ with tab_recado:
             st.success("Sua resposta foi enviada com sucesso! 💕")
             st.rerun()
 
-    # PERFIL VITÓRIA: PUBLICAR NOVO LEMBRETE COM HORÁRIO DE BRASÍLIA
+    # PERFIL VITÓRIA: PUBLICAR NOVO LEMBRETE
     if st.session_state.usuario_atual == "vitoria":
         st.markdown("---")
         st.subheader("✍️ Publicar Novo Lembrete Do Dia")
@@ -699,7 +701,6 @@ with tab_recado:
                 recados["historico"].insert(0, historico_item)
 
             recados["hoje"] = novo_recado_vit
-            # Captura a hora exata atual de Brasília ao postar
             recados["data_hora_hoje"] = formatar_data_hora()
             recados["data_dia"] = formatar_apenas_data()
 
@@ -723,14 +724,14 @@ with tab_recado:
             st.success("Novo lembrete publicado no app!")
             st.rerun()
 
-    # HISTÓRICO COMPLETO DE RECADOS
+    # HISTÓRICO COMPLETO DE RECADOS (COM EXCLUSÃO NO MODO EDIÇÃO)
     st.markdown("---")
     with st.expander("📜 Histórico de Recados Anteriores", expanded=False):
         historico = recados.get("historico", [])
         if not historico:
             st.write("Ainda não há recados guardados no histórico.")
         else:
-            for item_h in historico:
+            for idx_h, item_h in enumerate(historico):
                 st.markdown(
                     f"""
                     <div class="card-historico">
@@ -756,6 +757,15 @@ with tab_recado:
                     )
                     if img_hr_obj:
                         st.image(img_hr_obj, width=180)
+
+                # MODO EDIÇÃO: BOTÃO PARA DELETAR RECADOS ANTIGOS DO HISTÓRICO
+                if e_admin:
+                    if st.button(f"🗑️ Excluir Recado #{idx_h+1} do Histórico", key=f"btn_del_hist_rec_{idx_h}"):
+                        recados["historico"].pop(idx_h)
+                        salvar_json(FILE_RECADO, recados)
+                        st.success("Recado removido do histórico!")
+                        st.rerun()
+
                 st.markdown("<hr style='margin: 8px 0;'>", unsafe_allow_html=True)
 
 # =============================================================
