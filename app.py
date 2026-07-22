@@ -5,8 +5,9 @@ import streamlit as st
 from PIL import Image, ImageOps
 
 # Configuração da página
+# Se você subiu o arquivo icone.jpg (ou icone.png) no GitHub:
 st.set_page_config(
-    page_title="Nosso Aplicativo 💗", page_icon="💗", layout="centered"
+    page_title="Nosso Aplicativo 💗", page_icon="icone.jpg", layout="centered"
 )
 
 UPLOADS_DIR = "uploads"
