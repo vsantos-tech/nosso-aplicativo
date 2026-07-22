@@ -5,9 +5,8 @@ import streamlit as st
 from PIL import Image, ImageOps
 
 # Configuração da página
-# Se você subiu o arquivo icone.jpg (ou icone.png) no GitHub:
 st.set_page_config(
-    page_title="Nosso Aplicativo 💗", page_icon="icone.jpg", layout="centered"
+    page_title="Nosso Aplicativo 💗", page_icon="💗", layout="centered"
 )
 
 UPLOADS_DIR = "uploads"
@@ -28,7 +27,7 @@ def carregar_imagem_correta(caminho_imagem):
 
 
 # -------------------------------------------------------------
-# IMAGEM DE FUNDO E ÍCONE DO IOS (COM icone.jpg)
+# INJEÇÃO FORÇADA DO ÍCONE DO IOS (BASE64) E REMOÇÃO DE BARRAS
 # -------------------------------------------------------------
 def carregar_estilo_fundo():
     bg_image_path = None
@@ -43,6 +42,17 @@ def carregar_estilo_fundo():
         bg_style = f'background-image: url("data:image/png;base64,{bin_str}");'
     else:
         bg_style = "background: linear-gradient(135deg, #FFD1DC 0%, #FFB07C 50%, #E65C83 100%);"
+
+    # Carrega a imagem icone.jpg/icone.png se existir e converte para Base64
+    icon_b64_str = ""
+    for icon_name in ["icone.jpg", "icone.jpeg", "icone.png"]:
+        if os.path.exists(icon_name):
+            try:
+                with open(icon_name, "rb") as f:
+                    icon_b64_str = base64.b64encode(f.read()).decode()
+                break
+            except Exception:
+                pass
 
     css = f"""
         <style>
@@ -137,18 +147,27 @@ def carregar_estilo_fundo():
     """
     st.markdown(css, unsafe_allow_html=True)
 
-    # Injeta a tag do ícone icone.jpg para o iOS via HTML
-    st.components.v1.html(
+    # Injeção via HTML do link do ícone diretamente no <head> principal do iOS
+    if icon_b64_str:
+        icon_href = f"data:image/jpeg;base64,{icon_b64_str}"
+        js_code = f"""
+            <script>
+                var head = window.parent.document.getElementsByTagName('head')[0];
+                var oldIcons = window.parent.document.querySelectorAll("link[rel*='icon'], link[rel*='apple-touch-icon']");
+                oldIcons.forEach(function(el) {{ el.remove(); }});
+                
+                var linkApple = window.parent.document.createElement('link');
+                linkApple.rel = 'apple-touch-icon';
+                linkApple.href = '{icon_href}';
+                head.appendChild(linkApple);
+                
+                var linkFavicon = window.parent.document.createElement('link');
+                linkFavicon.rel = 'shortcut icon';
+                linkFavicon.href = '{icon_href}';
+                head.appendChild(linkFavicon);
+            </script>
         """
-        <script>
-            var link = parent.document.createElement('link');
-            link.rel = 'apple-touch-icon';
-            link.href = 'app/static/icone.jpg';
-            parent.document.getElementsByTagName('head')[0].appendChild(link);
-        </script>
-        """,
-        height=0,
-    )
+        st.components.v1.html(js_code, height=0)
 
 
 carregar_estilo_fundo()
