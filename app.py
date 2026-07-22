@@ -465,7 +465,7 @@ with tab_sentimento:
                     st.rerun()
 
 # =============================================================
-# ABA 2: RECADO (COM IMAGEM NO RECADO)
+# ABA 2: RECADO
 # =============================================================
 with tab_recado:
     st.header("☀️ Lembrete pro meu cheirinho")
@@ -482,6 +482,7 @@ with tab_recado:
         st.markdown("#### 👇 Resposta da Larissa:")
         st.success(f"💬 **Larissa:** {resp_atual}")
 
+    # RESPOSTA EXCLUSIVA DA LARISSA
     if st.session_state.usuario_atual == "larissa":
         st.markdown("---")
         st.markdown("### 👇 Resposta:")
@@ -498,11 +499,41 @@ with tab_recado:
             st.success("Sua resposta foi enviada com sucesso! 💕")
             st.rerun()
 
+    # ADICIONAR NOVO LEMBRETE + FOTO (PERFIL VITÓRIA SEM PRECISAR DE MODO EDIÇÃO)
+    if st.session_state.usuario_atual == "vitoria":
+        st.markdown("---")
+        st.subheader("✍️ Adicionar Lembrete do Dia")
+        novo_recado_vit = st.text_area(
+            "Escreva o novo lembrete:",
+            value=recados.get("hoje", ""),
+            key="input_lembrete_vit_direto",
+        )
+        up_img_vit_direto = st.file_uploader(
+            "Adicionar uma imagem ao lembrete (opcional):",
+            type=["png", "jpg", "jpeg", "webp"],
+            key="up_img_vit_direto",
+        )
+
+        if st.button("💌 Publicar Lembrete Hoje", key="btn_pub_lembrete_vit"):
+            recados["hoje"] = novo_recado_vit
+            if up_img_vit_direto is not None:
+                file_path = os.path.join(
+                    UPLOADS_DIR, "recado_hoje_" + up_img_vit_direto.name
+                )
+                with open(file_path, "wb") as f:
+                    f.write(up_img_vit_direto.getbuffer())
+                recados["imagem_hoje"] = file_path
+            recados["resposta_larissa"] = ""
+            salvar_json(FILE_RECADO, recados)
+            st.success("Novo lembrete publicado no app!")
+            st.rerun()
+
     if recados.get("amanha"):
         st.caption(
             "📌 *Existe um recado agendado preparado para carregar amanhã!*"
         )
 
+    # MODO EDIÇÃO DA VITÓRIA (GERENCIAR / AGENDAR)
     if e_admin:
         st.markdown("---")
         st.subheader("✏️ Gerenciar Recados (Modo Edição)")
@@ -518,11 +549,13 @@ with tab_recado:
             type=["png", "jpg", "jpeg", "webp"],
             key="up_img_hoje_file",
         )
-        
+
         if st.button("💾 Alterar Recado e Imagem de Hoje", key="btn_salvar_hoje"):
             recados["hoje"] = recado_hoje_edit
             if up_img_hoje is not None:
-                file_path = os.path.join(UPLOADS_DIR, "recado_hoje_" + up_img_hoje.name)
+                file_path = os.path.join(
+                    UPLOADS_DIR, "recado_hoje_" + up_img_hoje.name
+                )
                 with open(file_path, "wb") as f:
                     f.write(up_img_hoje.getbuffer())
                 recados["imagem_hoje"] = file_path
@@ -548,11 +581,14 @@ with tab_recado:
         col_r1, col_r2 = st.columns(2)
         with col_r1:
             if st.button(
-                "➕ Agendar Recado e Imagem para Amanhã", key="btn_salvar_amanha"
+                "➕ Agendar Recado e Imagem para Amanhã",
+                key="btn_salvar_amanha",
             ):
                 recados["amanha"] = recado_amanha_edit
                 if up_img_amanha is not None:
-                    file_path = os.path.join(UPLOADS_DIR, "recado_amanha_" + up_img_amanha.name)
+                    file_path = os.path.join(
+                        UPLOADS_DIR, "recado_amanha_" + up_img_amanha.name
+                    )
                     with open(file_path, "wb") as f:
                         f.write(up_img_amanha.getbuffer())
                     recados["imagem_amanha"] = file_path
@@ -641,7 +677,7 @@ with tab_musicas:
             st.rerun()
 
 # =============================================================
-# ABA 4: FOTOS (COM CORREÇÃO DE ROTAÇÃO EXIF)
+# ABA 4: FOTOS
 # =============================================================
 with tab_fotos:
     st.header("📸 Mural de Memórias")
@@ -736,7 +772,7 @@ with tab_fotos:
 # ABA 5: DATAS
 # =============================================================
 with tab_datas:
-    st.header("📅 Nossos Marcos Especialíssimos")
+    st.header("📅 Datas Especiais")
 
     datas = carregar_json(FILE_DATAS, DEFAULT_DATAS)
 
