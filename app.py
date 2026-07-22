@@ -16,15 +16,19 @@ if not os.path.exists(UPLOADS_DIR):
 
 
 # -------------------------------------------------------------
-# TRATAMENTO DE IMAGEM PARA RESPEITAR A ORIENTAÇÃO DA GALERIA
+# TRATAMENTO DE IMAGEM (SUPORTA ARQUIVOS LOCAIS E URLS)
 # -------------------------------------------------------------
-def carregar_imagem_correta(caminho_imagem):
+def carregar_imagem_correta(caminho_ou_url):
+    if not caminho_ou_url:
+        return None
+    if str(caminho_ou_url).startswith(("http://", "https://")):
+        return caminho_ou_url
     try:
-        image = Image.open(caminho_imagem)
+        image = Image.open(caminho_ou_url)
         image = ImageOps.exif_transpose(image)
         return image
     except Exception:
-        return caminho_imagem
+        return caminho_ou_url
 
 
 # -------------------------------------------------------------
@@ -202,6 +206,7 @@ DEFAULT_OPCOES_SENTIMENTOS = {
 DEFAULT_RECADO = {
     "hoje": "Não se esquece de tomar seu psyllium e tô morrendo de saudade de você! 💕",
     "data_hora_hoje": datetime.now().strftime("%d/%m/%Y às %H:%M"),
+    "data_dia": datetime.now().strftime("%d/%m/%Y"),
     "imagem_hoje": "",
     "resposta_larissa": "",
     "imagem_resposta_larissa": "",
@@ -385,7 +390,6 @@ with tab_sentimento:
 
     data_agora = datetime.now().strftime("%d/%m/%Y às %H:%M")
 
-    # PERFIL LARISSA: MOSTRA APENAS A LISTA DA LARISSA
     if st.session_state.usuario_atual == "larissa":
         novo_larissa = []
         st.write("🌸 **Sua Lista (Larissa):**")
@@ -411,7 +415,6 @@ with tab_sentimento:
             st.success("Seu sentimento foi atualizado!")
             st.rerun()
 
-    # PERFIL VITÓRIA: MOSTRA APENAS A LISTA DA VITÓRIA
     else:
         novo_vitoria = []
         st.write("🌿 **Sua Lista (Vitória):**")
@@ -437,7 +440,6 @@ with tab_sentimento:
             st.success("Seu sentimento foi atualizado!")
             st.rerun()
 
-    # HISTÓRICO DE SENTIMENTOS
     st.markdown("---")
     with st.expander("📜 Histórico de Sentimentos Registrados", expanded=False):
         hist_sent = sentimentos_salvos.get("historico", [])
@@ -455,7 +457,6 @@ with tab_sentimento:
                     unsafe_allow_html=True,
                 )
 
-    # MODO EDIÇÃO: ADICIONAR E REMOVER OPÇÕES DE SENTIMENTOS
     if e_admin:
         st.markdown("---")
         st.subheader("✏️ Gerenciar Lista de Sentimentos (Modo Edição)")
@@ -475,9 +476,7 @@ with tab_sentimento:
                         st.success("Opção removida!")
                         st.rerun()
 
-            add_sent_l = st.text_input(
-                "Novo sentimento para a Larissa:", key="in_add_sl"
-            )
+            add_sent_l = st.text_input("Novo sentimento para a Larissa:", key="in_add_sl")
             if st.button("➕ Adicionar Sentimento (Larissa)", key="btn_add_sl"):
                 if add_sent_l:
                     opcoes_sentimentos["larissa"].append(add_sent_l)
@@ -498,9 +497,7 @@ with tab_sentimento:
                         st.success("Opção removida!")
                         st.rerun()
 
-            add_sent_v = st.text_input(
-                "Novo sentimento para a Vitória:", key="in_add_sv"
-            )
+            add_sent_v = st.text_input("Novo sentimento para a Vitória:", key="in_add_sv")
             if st.button("➕ Adicionar Sentimento (Vitória)", key="btn_add_sv"):
                 if add_sent_v:
                     opcoes_sentimentos["vitoria"].append(add_sent_v)
@@ -509,21 +506,66 @@ with tab_sentimento:
                     st.rerun()
 
 # =============================================================
-# ABA 2: RECADO
+# ABA 2: RECADO (COM MUDANÇA AUTOMÁTICA DE DIA + LINK/UPLOAD DE FOTO)
 # =============================================================
 with tab_recado:
     st.header("☀️ Lembrete pro meu cheirinho")
 
     recados = carregar_json(FILE_RECADO, DEFAULT_RECADO)
 
-    # RECADO PRINCIPAL DO DIA
-    st.info(f"### {recados.get('hoje', '')}")
-    st.caption(f"🕒 Publicado em: {recados.get('data_hora_hoje', '')}")
+    # LÓGICA DE VIRADA DE DIA AUTOMÁTICA
+    hoje_str = datetime.now().strftime("%d/%m/%Y")
+    data_recado = recados.get("data_dia", "")
 
-    img_hoje = recados.get("imagem_hoje", "")
-    if img_hoje and os.path.exists(img_hoje):
-        st.image(carregar_imagem_correta(img_hoje), use_container_width=True)
+    if data_recado and data_recado != hoje_str and recados.get("hoje"):
+        # O recado pertence a um dia anterior -> move para o histórico!
+        if "historico" not in recados:
+            recados["historico"] = []
 
+        recados["historico"].insert(
+            0,
+            {
+                "recado": recados.get("hoje", ""),
+                "data_hora_hoje": recados.get(
+                    "data_hora_hoje", f"{data_recado} (Dia anterior)"
+                ),
+                "imagem_hoje": recados.get("imagem_hoje", ""),
+                "resposta_larissa": recados.get("resposta_larissa", ""),
+                "imagem_resposta_larissa": recados.get(
+                    "imagem_resposta_larissa", ""
+                ),
+                "data_hora_resposta": recados.get("data_hora_resposta", ""),
+            },
+        )
+        recados["hoje"] = ""
+        recados["imagem_hoje"] = ""
+        recados["resposta_larissa"] = ""
+        recados["imagem_resposta_larissa"] = ""
+        recados["data_hora_resposta"] = ""
+        recados["data_hora_hoje"] = ""
+        recados["data_dia"] = hoje_str
+        salvar_json(FILE_RECADO, recados)
+
+    # GARANTE DATA/HORA EXIBIDA
+    if recados.get("hoje") and not recados.get("data_hora_hoje"):
+        recados["data_hora_hoje"] = datetime.now().strftime("%d/%m/%Y às %H:%M")
+        recados["data_dia"] = hoje_str
+        salvar_json(FILE_RECADO, recados)
+
+    # EXIBIÇÃO DO RECADO ATUAL DO DIA
+    if recados.get("hoje"):
+        st.info(f"### {recados.get('hoje', '')}")
+        st.caption(f"🕒 **Publicado em:** {recados.get('data_hora_hoje', '')}")
+
+        img_hoje = recados.get("imagem_hoje", "")
+        if img_hoje:
+            img_obj = carregar_imagem_correta(img_hoje)
+            if img_obj:
+                st.image(img_obj, use_container_width=True)
+    else:
+        st.info("### Nenhum lembrete publicado para hoje ainda!")
+
+    # RESPOSTA DA LARISSA
     resp_atual = recados.get("resposta_larissa", "")
     img_resp_atual = recados.get("imagem_resposta_larissa", "")
 
@@ -533,14 +575,12 @@ with tab_recado:
             st.success(f"💬 **Larissa:** {resp_atual}")
         if recados.get("data_hora_resposta"):
             st.caption(f"🕒 Respondido em: {recados.get('data_hora_resposta')}")
-        if img_resp_atual and os.path.exists(img_resp_atual):
-            st.image(
-                carregar_imagem_correta(img_resp_atual),
-                width=250,
-                caption="Foto da Larissa 🌸",
-            )
+        if img_resp_atual:
+            img_resp_obj = carregar_imagem_correta(img_resp_atual)
+            if img_resp_obj:
+                st.image(img_resp_obj, width=250, caption="Foto da Larissa 🌸")
 
-    # RESPOSTA DA LARISSA COM UPLOAD DE FOTO
+    # PERFIL LARISSA: RESPOSTA COM FILE UPLOAD OU LINK DA WEB
     if st.session_state.usuario_atual == "larissa":
         st.markdown("---")
         st.markdown("### 👇 Resposta da Larissa:")
@@ -550,11 +590,26 @@ with tab_recado:
             key="input_resp_larissa",
             placeholder="Digite algo para responder o recado...",
         )
-        up_img_resp = st.file_uploader(
-            "Adicionar uma foto na resposta (opcional):",
-            type=["png", "jpg", "jpeg", "webp"],
-            key="up_img_resp_larissa",
+
+        st.write("📷 **Foto na Resposta (Opcional):**")
+        tab_r_up1, tab_r_up2 = st.tabs(
+            ["📁 Enviar Arquivo", "🔗 Colar Link de Imagem"]
         )
+
+        img_resposta_final = resp_atual
+        up_img_resp = None
+        url_img_resp = ""
+
+        with tab_r_up1:
+            up_img_resp = st.file_uploader(
+                "Escolha da galeria:",
+                type=["png", "jpg", "jpeg", "webp"],
+                key="up_img_resp_larissa",
+            )
+        with tab_r_up2:
+            url_img_resp = st.text_input(
+                "Link da imagem (https://...):", key="url_img_resp_larissa"
+            )
 
         if st.button("💌 Enviar Resposta", key="btn_env_resposta"):
             recados["resposta_larissa"] = texto_resposta
@@ -569,12 +624,14 @@ with tab_recado:
                 with open(file_path, "wb") as f:
                     f.write(up_img_resp.getbuffer())
                 recados["imagem_resposta_larissa"] = file_path
+            elif url_img_resp:
+                recados["imagem_resposta_larissa"] = url_img_resp
 
             salvar_json(FILE_RECADO, recados)
             st.success("Sua resposta foi enviada com sucesso! 💕")
             st.rerun()
 
-    # ADICIONAR NOVO LEMBRETE (PERFIL VITÓRIA)
+    # PERFIL VITÓRIA: PUBLICAR NOVO LEMBRETE DO DIA (FILE OU LINK URL)
     if st.session_state.usuario_atual == "vitoria":
         st.markdown("---")
         st.subheader("✍️ Publicar Novo Lembrete Do Dia")
@@ -583,17 +640,36 @@ with tab_recado:
             value=recados.get("hoje", ""),
             key="input_lembrete_vit_direto",
         )
-        up_img_vit_direto = st.file_uploader(
-            "Adicionar uma imagem ao lembrete (opcional):",
-            type=["png", "jpg", "jpeg", "webp"],
-            key="up_img_vit_direto",
+
+        st.write("🖼️ **Imagem do Lembrete (Opcional):**")
+        tab_l_up1, tab_l_up2 = st.tabs(
+            ["📁 Enviar Arquivo", "🔗 Colar Link de Imagem"]
         )
 
+        up_img_vit_direto = None
+        url_img_vit_direto = ""
+
+        with tab_l_up1:
+            up_img_vit_direto = st.file_uploader(
+                "Escolha da galeria/PC:",
+                type=["png", "jpg", "jpeg", "webp"],
+                key="up_img_vit_direto",
+            )
+        with tab_l_up2:
+            url_img_vit_direto = st.text_input(
+                "Link da imagem da web (https://...):",
+                key="url_img_vit_direto",
+            )
+
         if st.button("💌 Publicar Lembrete Hoje", key="btn_pub_lembrete_vit"):
+            # Move anterior para o histórico se for do mesmo dia substituído manual
             if recados.get("hoje"):
                 historico_item = {
                     "recado": recados.get("hoje", ""),
-                    "data_hora_hoje": recados.get("data_hora_hoje", ""),
+                    "data_hora_hoje": recados.get(
+                        "data_hora_hoje",
+                        datetime.now().strftime("%d/%m/%Y às %H:%M"),
+                    ),
                     "imagem_hoje": recados.get("imagem_hoje", ""),
                     "resposta_larissa": recados.get("resposta_larissa", ""),
                     "imagem_resposta_larissa": recados.get(
@@ -609,6 +685,7 @@ with tab_recado:
             recados["data_hora_hoje"] = datetime.now().strftime(
                 "%d/%m/%Y às %H:%M"
             )
+            recados["data_dia"] = datetime.now().strftime("%d/%m/%Y")
 
             if up_img_vit_direto is not None:
                 file_path = os.path.join(
@@ -617,6 +694,8 @@ with tab_recado:
                 with open(file_path, "wb") as f:
                     f.write(up_img_vit_direto.getbuffer())
                 recados["imagem_hoje"] = file_path
+            elif url_img_vit_direto:
+                recados["imagem_hoje"] = url_img_vit_direto
             else:
                 recados["imagem_hoje"] = ""
 
@@ -628,7 +707,7 @@ with tab_recado:
             st.success("Novo lembrete publicado no app!")
             st.rerun()
 
-    # HISTÓRICO DE RECADOS ANTERIORES
+    # HISTÓRICO DE RECADOS
     st.markdown("---")
     with st.expander("📜 Histórico de Recados Anteriores", expanded=False):
         historico = recados.get("historico", [])
@@ -645,13 +724,10 @@ with tab_recado:
                 """,
                     unsafe_allow_html=True,
                 )
-                if item_h.get("imagem_hoje") and os.path.exists(
-                    item_h.get("imagem_hoje")
-                ):
-                    st.image(
-                        carregar_imagem_correta(item_h.get("imagem_hoje")),
-                        width=200,
-                    )
+                if item_h.get("imagem_hoje"):
+                    img_h_obj = carregar_imagem_correta(item_h.get("imagem_hoje"))
+                    if img_h_obj:
+                        st.image(img_h_obj, width=200)
 
                 if item_h.get("resposta_larissa"):
                     st.write(
@@ -659,15 +735,12 @@ with tab_recado:
                     )
                     if item_h.get("data_hora_resposta"):
                         st.caption(f"🕒 {item_h.get('data_hora_resposta')}")
-                if item_h.get("imagem_resposta_larissa") and os.path.exists(
-                    item_h.get("imagem_resposta_larissa")
-                ):
-                    st.image(
-                        carregar_imagem_correta(
-                            item_h.get("imagem_resposta_larissa")
-                        ),
-                        width=180,
+                if item_h.get("imagem_resposta_larissa"):
+                    img_hr_obj = carregar_imagem_correta(
+                        item_h.get("imagem_resposta_larissa")
                     )
+                    if img_hr_obj:
+                        st.image(img_hr_obj, width=180)
                 st.markdown("<hr style='margin: 8px 0;'>", unsafe_allow_html=True)
 
 # =============================================================
@@ -714,7 +787,6 @@ with tab_musicas:
                     st.rerun()
         st.markdown("---")
 
-    # PERFIL LARISSA E VITÓRIA PODEM ADICIONAR MÚSICAS
     st.subheader("✍️ Adicionar Música / Sugestão")
     sugestao_musica = st.text_input(
         "Música e Artista:",
@@ -754,7 +826,6 @@ with tab_musicas:
             st.success("Música adicionada à nossa lista com sucesso! 🎶")
             st.rerun()
 
-    # HISTÓRICO DE MÚSICAS
     st.markdown("---")
     with st.expander("📜 Histórico / Registro de Músicas", expanded=False):
         for item_m in musicas:
@@ -780,11 +851,11 @@ with tab_fotos:
     for idx, foto in enumerate(fotos):
         target_col = col1 if idx % 2 == 0 else col2
         with target_col:
-            st.image(
-                carregar_imagem_correta(foto["url"]),
-                caption=foto["legenda"],
-                use_container_width=True,
-            )
+            img_obj = carregar_imagem_correta(foto["url"])
+            if img_obj:
+                st.image(
+                    img_obj, caption=foto["legenda"], use_container_width=True
+                )
             if e_admin:
                 nova_legenda = st.text_input(
                     f"Legenda #{idx+1}:",
@@ -876,7 +947,6 @@ with tab_fotos:
                     st.success("Nova foto da web adicionada!")
                     st.rerun()
 
-    # HISTÓRICO DE FOTOS
     st.markdown("---")
     with st.expander("📜 Histórico de Fotos Adicionadas", expanded=False):
         for item_f in fotos:
@@ -940,7 +1010,6 @@ with tab_datas:
                     st.rerun()
         st.markdown("---")
 
-    # PERFIL LARISSA E VITÓRIA PODEM ADICIONAR DATAS
     st.subheader("➕ Adicionar Nova Data Especial")
     add_d_ic = st.text_input(
         "Emoji/Ícone (ex: 💍, ✈️):", value="❤️", key="add_d_ic_geral"
@@ -969,7 +1038,6 @@ with tab_datas:
             st.success("Nova data especial adicionada!")
             st.rerun()
 
-    # HISTÓRICO DE DATAS
     st.markdown("---")
     with st.expander("📜 Histórico de Datas Especiais", expanded=False):
         for item_d in datas:
@@ -984,7 +1052,7 @@ with tab_datas:
             )
 
 # =============================================================
-# ABA 6: COMIDAS (RECEITAS EM CASA PRIMEIRO)
+# ABA 6: COMIDAS
 # =============================================================
 with tab_comidas:
     st.header("🍕 O Que Amamos Comer")
@@ -1041,7 +1109,6 @@ with tab_comidas:
                         salvar_json(FILE_COMIDAS, comidas)
                         st.rerun()
 
-    # CAIXINHA DE SUGESTÃO DE COMIDA
     st.markdown("---")
     st.subheader("✍️ Deixe sua sugestão de comida/restaurante:")
     tipo_comida_sug = st.radio(
@@ -1093,7 +1160,6 @@ with tab_comidas:
             st.success("Sua sugestão de comida foi salva com sucesso! 💖")
             st.rerun()
 
-    # HISTÓRICO DE SUGESTÕES DE COMIDAS
     st.markdown("---")
     with st.expander("📜 Histórico de Sugestões de Comidas", expanded=False):
         hist_c = comidas.get("historico_sugestoes", [])
@@ -1112,7 +1178,7 @@ with tab_comidas:
                 )
 
 # =============================================================
-# ABA 7: ENCONTROS (DATES COM REGISTRO DE DATA/HORA)
+# ABA 7: ENCONTROS (DATES)
 # =============================================================
 with tab_dates:
     st.header("🥂 Nossos Encontros (Feitos & A Fazer)")
@@ -1216,7 +1282,6 @@ with tab_dates:
             st.success("Sua sugestão de date foi enviada com sucesso! 💖")
             st.rerun()
 
-    # HISTÓRICO DE SUGESTÕES DE DATES
     st.markdown("---")
     with st.expander("📜 Histórico de Sugestões de Encontros", expanded=False):
         hist_d = dates.get("historico_sugestoes", [])
