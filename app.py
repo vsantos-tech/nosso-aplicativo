@@ -1,7 +1,8 @@
-from datetime import datetime, timezone, timedelta
+from datetime import datetime
 import base64
 import json
 import os
+import pytz
 import streamlit as st
 from PIL import Image, ImageOps
 
@@ -16,11 +17,11 @@ if not os.path.exists(UPLOADS_DIR):
 
 
 # -------------------------------------------------------------
-# FUNÇÃO PARA OBTER A DATA E HORA NO HORÁRIO DE BRASÍLIA (UTC-3)
+# HORÁRIO OFICIAL DE BRASÍLIA
 # -------------------------------------------------------------
 def obter_agora_brasilia():
-    fuso_brasilia = timezone(timedelta(hours=-3))
-    return datetime.now(fuso_brasilia)
+    fuso_br = pytz.timezone("America/Sao_Paulo")
+    return datetime.now(fuso_br)
 
 def formatar_data_hora():
     return obter_agora_brasilia().strftime("%d/%m/%Y às %H:%M")
@@ -30,7 +31,7 @@ def formatar_apenas_data():
 
 
 # -------------------------------------------------------------
-# TRATAMENTO DE IMAGEM (SUPORTA ARQUIVOS LOCAIS E URLS)
+# TRATAMENTO DE IMAGEM
 # -------------------------------------------------------------
 def carregar_imagem_correta(caminho_ou_url):
     if not caminho_ou_url:
@@ -520,7 +521,7 @@ with tab_sentimento:
                     st.rerun()
 
 # =============================================================
-# ABA 2: RECADO (FUSO BRASÍLIA + ARQUIVAMENTO AUTOMÁTICO)
+# ABA 2: RECADO (CORREÇÃO DE FUSO + HISTÓRICO GARANTIDO)
 # =============================================================
 with tab_recado:
     st.header("☀️ Lembrete pro meu cheirinho")
@@ -530,7 +531,7 @@ with tab_recado:
     hoje_br = formatar_apenas_data()
     data_recado = recados.get("data_dia", "")
 
-    # MUDANÇA DE DIA AUTOMÁTICA -> MOVE PARA O HISTÓRICO
+    # MUDANÇA AUTOMÁTICA DE DIA (SE FOR UM NOVO DIA, ARQUIVA O ANTERIOR)
     if data_recado and data_recado != hoje_br and recados.get("hoje"):
         if "historico" not in recados:
             recados["historico"] = []
@@ -540,7 +541,7 @@ with tab_recado:
             {
                 "recado": recados.get("hoje", ""),
                 "data_hora_hoje": recados.get(
-                    "data_hora_hoje", f"{data_recado} (Dia anterior)"
+                    "data_hora_hoje", f"{data_recado}"
                 ),
                 "imagem_hoje": recados.get("imagem_hoje", ""),
                 "resposta_larissa": recados.get("resposta_larissa", ""),
@@ -559,16 +560,10 @@ with tab_recado:
         recados["data_dia"] = hoje_br
         salvar_json(FILE_RECADO, recados)
 
-    # GARANTE DATA E HORA DE BRASÍLIA SE ESTIVER VAZIO
-    if recados.get("hoje") and not recados.get("data_hora_hoje"):
-        recados["data_hora_hoje"] = formatar_data_hora()
-        recados["data_dia"] = hoje_br
-        salvar_json(FILE_RECADO, recados)
-
     # EXIBE RECADO PRINCIPAL
     if recados.get("hoje"):
         st.info(f"### {recados.get('hoje', '')}")
-        st.caption(f"🕒 **Publicado em:** {recados.get('data_hora_hoje', '')}")
+        st.caption(f"🕒 **Publicado em:** {recados.get('data_hora_hoje', formatar_data_hora())}")
 
         img_hoje = recados.get("imagem_hoje", "")
         if img_hoje:
@@ -578,7 +573,7 @@ with tab_recado:
     else:
         st.info("### Nenhum lembrete publicado para hoje ainda!")
 
-    # EXIBE RESPOSTA DA LARISSA COM HORA DE BRASÍLIA
+    # EXIBIÇÃO DA RESPOSTA DA LARISSA
     resp_atual = recados.get("resposta_larissa", "")
     img_resp_atual = recados.get("imagem_resposta_larissa", "")
 
@@ -594,7 +589,7 @@ with tab_recado:
             if img_resp_obj:
                 st.image(img_resp_obj, width=250, caption="Foto da Larissa 🌸")
 
-    # PERFIL LARISSA: CAIXA DE RESPOSTA COM REGISTRO DE DATA E HORA
+    # PERFIL LARISSA: RESPOSTA COM DATA/HORA DE BRASÍLIA
     if st.session_state.usuario_atual == "larissa":
         st.markdown("---")
         st.markdown("### 👇 Resposta da Larissa:")
@@ -673,6 +668,7 @@ with tab_recado:
             )
 
         if st.button("💌 Publicar Lembrete Hoje", key="btn_pub_lembrete_vit"):
+            # Se já existir um recado atual, move para o histórico antes de trocar!
             if recados.get("hoje"):
                 historico_item = {
                     "recado": recados.get("hoje", ""),
@@ -741,7 +737,7 @@ with tab_recado:
                         f"💬 **Resposta Larissa:** {item_h.get('resposta_larissa')}"
                     )
                     if item_h.get("data_hora_resposta"):
-                        st.caption(f"🕒 {item_h.get('data_hora_resposta')}")
+                        st.caption(f"🕒 Respondido em: {item_h.get('data_hora_resposta')}")
                 if item_h.get("imagem_resposta_larissa"):
                     img_hr_obj = carregar_imagem_correta(
                         item_h.get("imagem_resposta_larissa")
