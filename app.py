@@ -218,13 +218,13 @@ DEFAULT_OPCOES_SENTIMENTOS = {
     ],
 }
 DEFAULT_RECADO = {
-    "hoje": "Não se esquece de tomar seu psyllium e tô morrendo de saudade de você! 💕",
-    "data_hora_hoje": formatar_data_hora(),
-    "data_dia": formatar_apenas_data(),
+    "hoje": "tô morrendo de saudade de você! 💕",
+    "data_hora_hoje": "22/07/2026 às 18:40",
+    "data_dia": "22/07/2026",
     "imagem_hoje": "",
-    "resposta_larissa": "",
+    "resposta_larissa": "Você é minha vida!!",
     "imagem_resposta_larissa": "",
-    "data_hora_resposta": "",
+    "data_hora_resposta": "22/07/2026 às 19:00",
     "historico": [],
 }
 DEFAULT_MUSICAS = [
@@ -520,24 +520,30 @@ with tab_sentimento:
                     st.rerun()
 
 # =============================================================
-# ABA 2: RECADO (COM MIGRACÃO AUTOMÁTICA DO HORÁRIO E DATA)
+# ABA 2: RECADO (HORÁRIOS FIXOS DO JSON)
 # =============================================================
 with tab_recado:
     st.header("☀️ Lembrete pro meu cheirinho")
 
     recados = carregar_json(FILE_RECADO, DEFAULT_RECADO)
 
-    hoje_br = formatar_apenas_data()
-    agora_br_str = formatar_data_hora()
-    data_recado = recados.get("data_dia", "")
+    # CORREÇÃO PONTUAL DOS RECADOS ATUAIS
+    precisa_salvar = False
+    if recados.get("data_hora_hoje") != "22/07/2026 às 18:40":
+        recados["data_hora_hoje"] = "22/07/2026 às 18:40"
+        precisa_salvar = True
 
-    # MIGRAR HORÁRIO UTC ANTIGO SE TIVER '22:30' NO JSON PRESO
-    if "22:30" in str(recados.get("data_hora_hoje", "")):
-        recados["data_hora_hoje"] = agora_br_str
-        recados["data_dia"] = hoje_br
+    if recados.get("resposta_larissa") and recados.get("data_hora_resposta") != "22/07/2026 às 19:00":
+        recados["data_hora_resposta"] = "22/07/2026 às 19:00"
+        precisa_salvar = True
+
+    if precisa_salvar:
         salvar_json(FILE_RECADO, recados)
 
-    # MUDANÇA AUTOMÁTICA DE DIA (SE VIRAR O DIA, MOVE O RECADO ATUAL PARA O HISTÓRICO)
+    hoje_br = formatar_apenas_data()
+    data_recado = recados.get("data_dia", "")
+
+    # VIRADA DE DIA AUTOMÁTICA
     if data_recado and data_recado != hoje_br and recados.get("hoje"):
         if "historico" not in recados:
             recados["historico"] = []
@@ -546,14 +552,10 @@ with tab_recado:
             0,
             {
                 "recado": recados.get("hoje", ""),
-                "data_hora_hoje": recados.get(
-                    "data_hora_hoje", f"{data_recado}"
-                ),
+                "data_hora_hoje": recados.get("data_hora_hoje", ""),
                 "imagem_hoje": recados.get("imagem_hoje", ""),
                 "resposta_larissa": recados.get("resposta_larissa", ""),
-                "imagem_resposta_larissa": recados.get(
-                    "imagem_resposta_larissa", ""
-                ),
+                "imagem_resposta_larissa": recados.get("imagem_resposta_larissa", ""),
                 "data_hora_resposta": recados.get("data_hora_resposta", ""),
             },
         )
@@ -569,7 +571,7 @@ with tab_recado:
     # EXIBE RECADO PRINCIPAL DO DIA
     if recados.get("hoje"):
         st.info(f"### {recados.get('hoje', '')}")
-        st.caption(f"🕒 **Publicado em:** {recados.get('data_hora_hoje', agora_br_str)}")
+        st.caption(f"🕒 **Publicado em:** {recados.get('data_hora_hoje', '')}")
 
         img_hoje = recados.get("imagem_hoje", "")
         if img_hoje:
@@ -589,16 +591,15 @@ with tab_recado:
         st.markdown("#### 👇 Resposta da Larissa:")
         if resp_atual:
             st.success(f"💬 **Larissa:** {resp_atual}")
-        
-        # Garante a exibição da data/hora da resposta
-        st.caption(f"🕒 **Respondido em:** {dt_resp if dt_resp else agora_br_str}")
+        if dt_resp:
+            st.caption(f"🕒 **Respondido em:** {dt_resp}")
             
         if img_resp_atual:
             img_resp_obj = carregar_imagem_correta(img_resp_atual)
             if img_resp_obj:
                 st.image(img_resp_obj, width=250, caption="Foto da Larissa 🌸")
 
-    # PERFIL LARISSA: RESPOSTA COM REGISTRO DE DATA E HORA
+    # PERFIL LARISSA: RESPOSTA COM REGISTRO PERMANENTE DE DATA E HORA
     if st.session_state.usuario_atual == "larissa":
         st.markdown("---")
         st.markdown("### 👇 Resposta da Larissa:")
@@ -677,18 +678,13 @@ with tab_recado:
             )
 
         if st.button("💌 Publicar Lembrete Hoje", key="btn_pub_lembrete_vit"):
-            # Move recado atual para o histórico se for publicado um novo
             if recados.get("hoje"):
                 historico_item = {
                     "recado": recados.get("hoje", ""),
-                    "data_hora_hoje": recados.get(
-                        "data_hora_hoje", formatar_data_hora()
-                    ),
+                    "data_hora_hoje": recados.get("data_hora_hoje", ""),
                     "imagem_hoje": recados.get("imagem_hoje", ""),
                     "resposta_larissa": recados.get("resposta_larissa", ""),
-                    "imagem_resposta_larissa": recados.get(
-                        "imagem_resposta_larissa", ""
-                    ),
+                    "imagem_resposta_larissa": recados.get("imagem_resposta_larissa", ""),
                     "data_hora_resposta": recados.get("data_hora_resposta", ""),
                 }
                 if "historico" not in recados:
@@ -745,7 +741,7 @@ with tab_recado:
                     st.write(
                         f"💬 **Resposta Larissa:** {item_h.get('resposta_larissa')}"
                     )
-                    st.caption(f"🕒 Respondido em: {item_h.get('data_hora_resposta', 'Data não registrada')}")
+                    st.caption(f"🕒 Respondido em: {item_h.get('data_hora_resposta', '')}")
                 if item_h.get("imagem_resposta_larissa"):
                     img_hr_obj = carregar_imagem_correta(
                         item_h.get("imagem_resposta_larissa")
