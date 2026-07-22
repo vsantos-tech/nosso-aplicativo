@@ -27,7 +27,7 @@ def carregar_imagem_correta(caminho_imagem):
 
 
 # -------------------------------------------------------------
-# INJEÇÃO DE META TAGS DO IOS + ÍCONE DE CORAÇÃO E REMOÇÃO DO BARCO
+# IMAGEM DE FUNDO E REMOÇÃO DE BARRAS (SEM QUEBRAR O HTML)
 # -------------------------------------------------------------
 def carregar_estilo_fundo():
     bg_image_path = None
@@ -43,21 +43,9 @@ def carregar_estilo_fundo():
     else:
         bg_style = "background: linear-gradient(135deg, #FFD1DC 0%, #FFB07C 50%, #E65C83 100%);"
 
-    # SVG do Coração Rosa para o Ícone da Tela de Início do iPhone
-    heart_icon_svg = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' fill='%23FFD1DC'/><text y='.9em' font-size='90'>💗</text></svg>"
-
-    st.markdown(
-        f"""
-        <head>
-            <!-- CONFIGURAÇÕES DE TELA CHEIA E ÍCONE DO IOS -->
-            <meta name="apple-mobile-web-app-capable" content="yes">
-            <meta name="apple-mobile-web-app-status-bar-style" content="translucent">
-            <meta name="theme-color" content="#FFD1DC">
-            <link rel="apple-touch-icon" href="{heart_icon_svg}">
-            <link rel="icon" href="{heart_icon_svg}">
-        </head>
+    css = f"""
         <style>
-        /* OCULTA TOTALMENTE BARRAS SUPERIORES E O BOTÃO/COROA VERMELHO DO STREAMLIT */
+        /* OCULTA BARRA SUPERIOR, MENU E FOOTER DO STREAMLIT */
         header, 
         [data-testid="stHeader"], 
         [data-testid="stAppToolbar"], 
@@ -73,7 +61,7 @@ def carregar_estilo_fundo():
             height: 0px !important;
         }}
         
-        [data-testid="stDecoration"] {{display: none !important;}}
+        [data-testid="stDecoration"] {{ display: none !important; }}
         
         .stApp {{
             {bg_style}
@@ -82,7 +70,7 @@ def carregar_estilo_fundo():
             background-repeat: no-repeat;
             background-attachment: fixed;
             margin-top: 0px !important;
-            padding-top: 25px !important;
+            padding-top: 10px !important;
         }}
         
         [data-testid="stSidebar"] {{
@@ -94,6 +82,7 @@ def carregar_estilo_fundo():
             font-weight: 500;
         }}
         
+        /* ESTILO COMPACTO DAS ABAS */
         div[data-baseweb="tab-list"] {{
             gap: 2px !important;
             display: flex !important;
@@ -145,9 +134,8 @@ def carregar_estilo_fundo():
             color: white !important;
         }}
         </style>
-    """,
-        unsafe_allow_html=True,
-    )
+    """
+    st.markdown(css, unsafe_allow_html=True)
 
 
 carregar_estilo_fundo()
