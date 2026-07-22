@@ -2,6 +2,7 @@ import base64
 import json
 import os
 import streamlit as st
+from PIL import Image, ImageOps
 
 # Configuração da página
 st.set_page_config(
@@ -11,6 +12,18 @@ st.set_page_config(
 UPLOADS_DIR = "uploads"
 if not os.path.exists(UPLOADS_DIR):
     os.makedirs(UPLOADS_DIR)
+
+
+# -------------------------------------------------------------
+# TRATAMENTO DE IMAGEM PARA RESPEITAR A ORIENTAÇÃO DA GALERIA
+# -------------------------------------------------------------
+def carregar_imagem_correta(caminho_imagem):
+    try:
+        image = Image.open(caminho_imagem)
+        image = ImageOps.exif_transpose(image)
+        return image
+    except Exception:
+        return caminho_imagem
 
 
 # -------------------------------------------------------------
@@ -33,7 +46,6 @@ def carregar_estilo_fundo():
     st.markdown(
         f"""
         <style>
-        /* OCULTA TOTALMENTE A BARRA PRETA DO TOPO (GITHUB / FORK / STREAMLIT) */
         header, 
         [data-testid="stHeader"], 
         [data-testid="stAppToolbar"], 
@@ -130,6 +142,7 @@ carregar_estilo_fundo()
 # PERSISTÊNCIA DOS DADOS
 # -------------------------------------------------------------
 FILE_SENTIMENTOS = "sentimentos.json"
+FILE_OPCOES_SENTIMENTOS = "opcoes_sentimentos.json"
 FILE_RECADO = "recado.json"
 FILE_MUSICAS = "musicas.json"
 FILE_FOTOS = "fotos.json"
@@ -154,9 +167,33 @@ def salvar_json(filepath, data):
 
 
 DEFAULT_SENTIMENTOS = {"larissa": [], "vitoria": []}
+DEFAULT_OPCOES_SENTIMENTOS = {
+    "larissa": [
+        "Contente 😊",
+        "Triste 😢",
+        "Desanimada 🫠",
+        "Estressada 🤯",
+        "Com enxaqueca 🤕",
+        "Empolgada ✨",
+        "Ansiosa 😰",
+        "Cansada 🥱",
+    ],
+    "vitoria": [
+        "Contente 😊",
+        "Triste 😢",
+        "Desanimada 🫠",
+        "Irritada 😤",
+        "Não verbal 🔕",
+        "Ansiosa 😰",
+        "Empolgada ✨",
+        "Cansada 🥱",
+    ],
+}
 DEFAULT_RECADO = {
     "hoje": "Não se esquece de tomar seu psyllium e tô morrendo de saudade de você! 💕",
+    "imagem_hoje": "",
     "amanha": "",
+    "imagem_amanha": "",
     "resposta_larissa": "",
 }
 DEFAULT_MUSICAS = [
@@ -300,28 +337,12 @@ with tab_sentimento:
     sentimentos_salvos = carregar_json(
         FILE_SENTIMENTOS, DEFAULT_SENTIMENTOS
     )
+    opcoes_sentimentos = carregar_json(
+        FILE_OPCOES_SENTIMENTOS, DEFAULT_OPCOES_SENTIMENTOS
+    )
 
-    opcoes_larissa = [
-        "Contente 😊",
-        "Triste 😢",
-        "Desanimada 🫠",
-        "Estressada 🤯",
-        "Com enxaqueca 🤕",
-        "Empolgada ✨",
-        "Ansiosa 😰",
-        "Cansada 🥱",
-    ]
-
-    opcoes_vitoria = [
-        "Contente 😊",
-        "Triste 😢",
-        "Desanimada 🫠",
-        "Irritada 😤",
-        "Não verbal 🔕",
-        "Ansiosa 😰",
-        "Empolgada ✨",
-        "Cansada 🥱",
-    ]
+    opcoes_larissa = opcoes_sentimentos.get("larissa", [])
+    opcoes_vitoria = opcoes_sentimentos.get("vitoria", [])
 
     st.markdown("### 🌟 Destaque do Dia:")
     col_d1, col_d2 = st.columns(2)
@@ -394,14 +415,67 @@ with tab_sentimento:
         st.success("Seu sentimento foi atualizado!")
         st.rerun()
 
+    # MODO EDIÇÃO: ADICIONAR E REMOVER OPÇÕES DE SENTIMENTOS
+    if e_admin:
+        st.markdown("---")
+        st.subheader("✏️ Gerenciar Lista de Sentimentos (Modo Edição)")
+        
+        tab_s1, tab_s2 = st.tabs(["🌸 Opções da Larissa", "🌿 Opções da Vitória"])
+        
+        with tab_s1:
+            st.write("**Opções Atuais da Larissa:**")
+            for idx_s, item_s in enumerate(opcoes_larissa):
+                col_s_txt, col_s_del = st.columns([3, 1])
+                with col_s_txt:
+                    st.write(f"- {item_s}")
+                with col_s_del:
+                    if st.button(f"🗑️ Excluir", key=f"btn_del_sl_{idx_s}"):
+                        opcoes_sentimentos["larissa"].pop(idx_s)
+                        salvar_json(FILE_OPCOES_SENTIMENTOS, opcoes_sentimentos)
+                        st.success("Opção removida!")
+                        st.rerun()
+            
+            add_sent_l = st.text_input("Novo sentimento para a Larissa (ex: Radiante ✨):", key="in_add_sl")
+            if st.button("➕ Adicionar Sentimento (Larissa)", key="btn_add_sl"):
+                if add_sent_l:
+                    opcoes_sentimentos["larissa"].append(add_sent_l)
+                    salvar_json(FILE_OPCOES_SENTIMENTOS, opcoes_sentimentos)
+                    st.success("Novo sentimento adicionado à lista da Larissa!")
+                    st.rerun()
+
+        with tab_s2:
+            st.write("**Opções Atuais da Vitória:**")
+            for idx_s, item_s in enumerate(opcoes_vitoria):
+                col_s_txt, col_s_del = st.columns([3, 1])
+                with col_s_txt:
+                    st.write(f"- {item_s}")
+                with col_s_del:
+                    if st.button(f"🗑️ Excluir", key=f"btn_del_sv_{idx_s}"):
+                        opcoes_sentimentos["vitoria"].pop(idx_s)
+                        salvar_json(FILE_OPCOES_SENTIMENTOS, opcoes_sentimentos)
+                        st.success("Opção removida!")
+                        st.rerun()
+            
+            add_sent_v = st.text_input("Novo sentimento para a Vitória (ex: Com preguiça 😴):", key="in_add_sv")
+            if st.button("➕ Adicionar Sentimento (Vitória)", key="btn_add_sv"):
+                if add_sent_v:
+                    opcoes_sentimentos["vitoria"].append(add_sent_v)
+                    salvar_json(FILE_OPCOES_SENTIMENTOS, opcoes_sentimentos)
+                    st.success("Novo sentimento adicionado à lista da Vitória!")
+                    st.rerun()
+
 # =============================================================
-# ABA 2: RECADO
+# ABA 2: RECADO (COM IMAGEM NO RECADO)
 # =============================================================
 with tab_recado:
     st.header("☀️ Lembrete pro meu cheirinho")
 
     recados = carregar_json(FILE_RECADO, DEFAULT_RECADO)
     st.info(f"### {recados.get('hoje', '')}")
+
+    img_hoje = recados.get("imagem_hoje", "")
+    if img_hoje and os.path.exists(img_hoje):
+        st.image(carregar_imagem_correta(img_hoje), use_container_width=True)
 
     resp_atual = recados.get("resposta_larissa", "")
     if resp_atual:
@@ -439,8 +513,19 @@ with tab_recado:
             value=recados.get("hoje", ""),
             key="recado_hoje_text",
         )
-        if st.button("💾 Alterar Recado Atual", key="btn_salvar_hoje"):
+        up_img_hoje = st.file_uploader(
+            "Adicionar/Trocar Imagem do Recado de Hoje:",
+            type=["png", "jpg", "jpeg", "webp"],
+            key="up_img_hoje_file",
+        )
+        
+        if st.button("💾 Alterar Recado e Imagem de Hoje", key="btn_salvar_hoje"):
             recados["hoje"] = recado_hoje_edit
+            if up_img_hoje is not None:
+                file_path = os.path.join(UPLOADS_DIR, "recado_hoje_" + up_img_hoje.name)
+                with open(file_path, "wb") as f:
+                    f.write(up_img_hoje.getbuffer())
+                recados["imagem_hoje"] = file_path
             recados["resposta_larissa"] = ""
             salvar_json(FILE_RECADO, recados)
             st.success("Recado atualizado!")
@@ -454,13 +539,23 @@ with tab_recado:
             value=recados.get("amanha", ""),
             key="recado_amanha_text",
         )
+        up_img_amanha = st.file_uploader(
+            "Adicionar Imagem para o Recado de Amanhã:",
+            type=["png", "jpg", "jpeg", "webp"],
+            key="up_img_amanha_file",
+        )
 
         col_r1, col_r2 = st.columns(2)
         with col_r1:
             if st.button(
-                "➕ Agendar Recado para Amanhã", key="btn_salvar_amanha"
+                "➕ Agendar Recado e Imagem para Amanhã", key="btn_salvar_amanha"
             ):
                 recados["amanha"] = recado_amanha_edit
+                if up_img_amanha is not None:
+                    file_path = os.path.join(UPLOADS_DIR, "recado_amanha_" + up_img_amanha.name)
+                    with open(file_path, "wb") as f:
+                        f.write(up_img_amanha.getbuffer())
+                    recados["imagem_amanha"] = file_path
                 salvar_json(FILE_RECADO, recados)
                 st.success("Recado de amanhã guardado!")
                 st.rerun()
@@ -471,7 +566,9 @@ with tab_recado:
                     key="btn_promover",
                 ):
                     recados["hoje"] = recados["amanha"]
+                    recados["imagem_hoje"] = recados.get("imagem_amanha", "")
                     recados["amanha"] = ""
+                    recados["imagem_amanha"] = ""
                     recados["resposta_larissa"] = ""
                     salvar_json(FILE_RECADO, recados)
                     st.success("Recado de amanhã promovido a Recado Atual!")
@@ -544,7 +641,7 @@ with tab_musicas:
             st.rerun()
 
 # =============================================================
-# ABA 4: FOTOS
+# ABA 4: FOTOS (COM CORREÇÃO DE ROTAÇÃO EXIF)
 # =============================================================
 with tab_fotos:
     st.header("📸 Mural de Memórias")
@@ -556,7 +653,9 @@ with tab_fotos:
         target_col = col1 if idx % 2 == 0 else col2
         with target_col:
             st.image(
-                foto["url"], caption=foto["legenda"], use_container_width=True
+                carregar_imagem_correta(foto["url"]),
+                caption=foto["legenda"],
+                use_container_width=True,
             )
             if e_admin:
                 nova_legenda = st.text_input(
