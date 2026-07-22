@@ -27,7 +27,7 @@ def carregar_imagem_correta(caminho_imagem):
 
 
 # -------------------------------------------------------------
-# IMAGEM DE FUNDO E REMOÇÃO TOTAL DA BARRA PRETA DO TOPO
+# INJEÇÃO DE META TAGS DO IOS + ÍCONE DE CORAÇÃO E REMOÇÃO DO BARCO
 # -------------------------------------------------------------
 def carregar_estilo_fundo():
     bg_image_path = None
@@ -43,22 +43,36 @@ def carregar_estilo_fundo():
     else:
         bg_style = "background: linear-gradient(135deg, #FFD1DC 0%, #FFB07C 50%, #E65C83 100%);"
 
+    # SVG do Coração Rosa para o Ícone da Tela de Início do iPhone
+    heart_icon_svg = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' fill='%23FFD1DC'/><text y='.9em' font-size='90'>💗</text></svg>"
+
     st.markdown(
         f"""
+        <head>
+            <!-- CONFIGURAÇÕES DE TELA CHEIA E ÍCONE DO IOS -->
+            <meta name="apple-mobile-web-app-capable" content="yes">
+            <meta name="apple-mobile-web-app-status-bar-style" content="translucent">
+            <meta name="theme-color" content="#FFD1DC">
+            <link rel="apple-touch-icon" href="{heart_icon_svg}">
+            <link rel="icon" href="{heart_icon_svg}">
+        </head>
         <style>
+        /* OCULTA TOTALMENTE BARRAS SUPERIORES E O BOTÃO/COROA VERMELHO DO STREAMLIT */
         header, 
         [data-testid="stHeader"], 
         [data-testid="stAppToolbar"], 
         [data-testid="stHeaderActionElements"],
         div[class*="stAppHeader"], 
-        div[class*="stAppToolbar"] {{
+        div[class*="stAppToolbar"],
+        [data-testid="stStatusWidget"],
+        .viewerBadge_container__1323f,
+        #MainMenu,
+        footer {{
             display: none !important;
             visibility: hidden !important;
             height: 0px !important;
         }}
         
-        #MainMenu {{visibility: hidden !important;}}
-        footer {{visibility: hidden !important;}}
         [data-testid="stDecoration"] {{display: none !important;}}
         
         .stApp {{
@@ -68,7 +82,7 @@ def carregar_estilo_fundo():
             background-repeat: no-repeat;
             background-attachment: fixed;
             margin-top: 0px !important;
-            padding-top: 0px !important;
+            padding-top: 25px !important;
         }}
         
         [data-testid="stSidebar"] {{
