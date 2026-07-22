@@ -1,8 +1,7 @@
-from datetime import datetime
+from datetime import datetime, timezone, timedelta
 import base64
 import json
 import os
-import pytz
 import streamlit as st
 from PIL import Image, ImageOps
 
@@ -17,11 +16,11 @@ if not os.path.exists(UPLOADS_DIR):
 
 
 # -------------------------------------------------------------
-# HORÁRIO OFICIAL DE BRASÍLIA
+# HORÁRIO OFICIAL DE BRASÍLIA (SEM BIBLIOTECAS EXTERNAS)
 # -------------------------------------------------------------
 def obter_agora_brasilia():
-    fuso_br = pytz.timezone("America/Sao_Paulo")
-    return datetime.now(fuso_br)
+    fuso_brasilia = timezone(timedelta(hours=-3))
+    return datetime.now(fuso_brasilia)
 
 def formatar_data_hora():
     return obter_agora_brasilia().strftime("%d/%m/%Y às %H:%M")
@@ -521,7 +520,7 @@ with tab_sentimento:
                     st.rerun()
 
 # =============================================================
-# ABA 2: RECADO (CORREÇÃO DE FUSO + HISTÓRICO GARANTIDO)
+# ABA 2: RECADO
 # =============================================================
 with tab_recado:
     st.header("☀️ Lembrete pro meu cheirinho")
@@ -668,7 +667,7 @@ with tab_recado:
             )
 
         if st.button("💌 Publicar Lembrete Hoje", key="btn_pub_lembrete_vit"):
-            # Se já existir um recado atual, move para o histórico antes de trocar!
+            # Move recado atual para o histórico se for publicado um novo
             if recados.get("hoje"):
                 historico_item = {
                     "recado": recados.get("hoje", ""),
