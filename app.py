@@ -1,3 +1,4 @@
+from datetime import datetime
 import base64
 import json
 import os
@@ -27,7 +28,7 @@ def carregar_imagem_correta(caminho_imagem):
 
 
 # -------------------------------------------------------------
-# INJEÇÃO FORÇADA DO ÍCONE DO IOS (BASE64) E REMOÇÃO DE BARRAS
+# ESTILIZAÇÃO E REMOÇÃO DE BARRAS PADAO
 # -------------------------------------------------------------
 def carregar_estilo_fundo():
     bg_image_path = None
@@ -43,20 +44,8 @@ def carregar_estilo_fundo():
     else:
         bg_style = "background: linear-gradient(135deg, #FFD1DC 0%, #FFB07C 50%, #E65C83 100%);"
 
-    # Carrega a imagem icone.jpg/icone.png se existir e converte para Base64
-    icon_b64_str = ""
-    for icon_name in ["icone.jpg", "icone.jpeg", "icone.png"]:
-        if os.path.exists(icon_name):
-            try:
-                with open(icon_name, "rb") as f:
-                    icon_b64_str = base64.b64encode(f.read()).decode()
-                break
-            except Exception:
-                pass
-
     css = f"""
         <style>
-        /* OCULTA BARRA SUPERIOR, MENU E FOOTER DO STREAMLIT */
         header, 
         [data-testid="stHeader"], 
         [data-testid="stAppToolbar"], 
@@ -143,31 +132,18 @@ def carregar_estilo_fundo():
             background: linear-gradient(90deg, #D44B72 0%, #E06754 100%);
             color: white !important;
         }}
+        
+        .card-historico {{
+            background-color: rgba(255, 255, 255, 0.75);
+            border-radius: 10px;
+            padding: 10px;
+            margin-bottom: 10px;
+            border-left: 4px solid #E65C83;
+            font-size: 13px;
+        }}
         </style>
     """
     st.markdown(css, unsafe_allow_html=True)
-
-    # Injeção via HTML do link do ícone diretamente no <head> principal do iOS
-    if icon_b64_str:
-        icon_href = f"data:image/jpeg;base64,{icon_b64_str}"
-        js_code = f"""
-            <script>
-                var head = window.parent.document.getElementsByTagName('head')[0];
-                var oldIcons = window.parent.document.querySelectorAll("link[rel*='icon'], link[rel*='apple-touch-icon']");
-                oldIcons.forEach(function(el) {{ el.remove(); }});
-                
-                var linkApple = window.parent.document.createElement('link');
-                linkApple.rel = 'apple-touch-icon';
-                linkApple.href = '{icon_href}';
-                head.appendChild(linkApple);
-                
-                var linkFavicon = window.parent.document.createElement('link');
-                linkFavicon.rel = 'shortcut icon';
-                linkFavicon.href = '{icon_href}';
-                head.appendChild(linkFavicon);
-            </script>
-        """
-        st.components.v1.html(js_code, height=0)
 
 
 carregar_estilo_fundo()
@@ -225,50 +201,44 @@ DEFAULT_OPCOES_SENTIMENTOS = {
 }
 DEFAULT_RECADO = {
     "hoje": "Não se esquece de tomar seu psyllium e tô morrendo de saudade de você! 💕",
+    "data_hora_hoje": datetime.now().strftime("%d/%m/%Y às %H:%M"),
     "imagem_hoje": "",
-    "amanha": "",
-    "imagem_amanha": "",
     "resposta_larissa": "",
+    "imagem_resposta_larissa": "",
+    "data_hora_resposta": "",
+    "historico": [],
 }
 DEFAULT_MUSICAS = [
     {
         "nome": "Nossa Música Favorita",
         "link": "https://open.spotify.com/track/4cOdK2wGLETKBW3PvgPWqT",
+        "data_hora": datetime.now().strftime("%d/%m/%Y às %H:%M"),
+        "autor": "Vitória",
     }
 ]
 DEFAULT_FOTOS = [
     {
         "url": "https://images.unsplash.com/photo-1516589178581-6cd7833ae3b2?q=80&w=600",
         "legenda": "Nosso passeio favorito 🌿",
-    },
-    {
-        "url": "https://images.unsplash.com/photo-1522673607200-164d1b6ce486?q=80&w=600",
-        "legenda": "Momento aconchego ☕",
-    },
+    }
 ]
 DEFAULT_DATAS = [
-    {"titulo": "Primeiro Encontro", "data": "12/05/2023", "icone": "🥂"},
-    {"titulo": "Início do Namoro", "data": "20/06/2023", "icone": "💍"},
+    {
+        "titulo": "Primeiro Encontro",
+        "data": "12/05/2023",
+        "icone": "🥂",
+        "data_hora_adicionado": datetime.now().strftime("%d/%m/%Y às %H:%M"),
+    }
 ]
 DEFAULT_COMIDAS = {
+    "receitas": ["🍝 Massa Especial de Quinta-feira"],
     "restaurantes": [
         "🍣 Japonês: Nosso lugar favorito",
         "🍕 Pizzaria: Cantina Especial",
     ],
-    "receitas": ["🍝 Massa Especial de Quinta-feira"],
+    "sugestoes": [],
 }
-DEFAULT_DATES = {
-    "casa": [
-        "Noite do hambúrguer caseiro com filme",
-        "Montar um quebra-cabeça no chão da sala",
-        "Noite do vinho e jogos de tabuleiro",
-    ],
-    "rua": [
-        "Piquenique no parque no fim da tarde",
-        "Conhecer uma cafeteria artesanal nova",
-        "Sessão de cinema no meio da semana",
-    ],
-}
+DEFAULT_DATES = {"casa": [], "rua": [], "sugestoes": []}
 
 # -------------------------------------------------------------
 # IDENTIFICAÇÃO DE USUÁRIA ("QUEM É VOCÊ?")
@@ -299,7 +269,11 @@ if st.session_state.usuario_atual is None:
 
 col_topo1, col_topo2 = st.columns([2, 2])
 with col_topo1:
-    nome_exib = "☀️ Larissa" if st.session_state.usuario_atual == "larissa" else "🌙 Vitória"
+    nome_exib = (
+        "☀️ Larissa"
+        if st.session_state.usuario_atual == "larissa"
+        else "🌙 Vitória"
+    )
     st.write(f"Conectada como: **{nome_exib}**")
 with col_topo2:
     if st.button("🔄 Trocar perfil", key="btn_trocar_usr"):
@@ -316,10 +290,15 @@ if "e_admin" not in st.session_state:
 SENHA_CORRETA = "1234"
 
 if st.session_state.usuario_atual == "vitoria":
-    with st.expander("🔑 Acessar Modo Edição (Exclusivo Vitória)", expanded=st.session_state.e_admin):
+    with st.expander(
+        "🔑 Acessar Modo Edição (Exclusivo Vitória)",
+        expanded=st.session_state.e_admin,
+    ):
         if not st.session_state.e_admin:
             senha_input = st.text_input(
-                "Digite a senha para editar o app:", type="password", key="pwd_input_main"
+                "Digite a senha para editar o app:",
+                type="password",
+                key="pwd_input_main",
             )
             if st.button("Entrar no Modo Edição", key="btn_login_admin_main"):
                 if senha_input == SENHA_CORRETA:
@@ -330,13 +309,17 @@ if st.session_state.usuario_atual == "vitoria":
                     st.error("Senha incorreta!")
         else:
             st.success("✨ Você está no Modo Edição!")
-            if st.button("🚪 SALVAR E SAIR DO MODO EDIÇÃO", key="btn_sair_admin_main"):
+            if st.button(
+                "🚪 SALVAR E SAIR DO MODO EDIÇÃO", key="btn_sair_admin_main"
+            ):
                 st.session_state.e_admin = False
                 st.success("Edições concluídas!")
                 st.rerun()
 
 e_admin = (
-    st.session_state.e_admin if st.session_state.usuario_atual == "vitoria" else False
+    st.session_state.e_admin
+    if st.session_state.usuario_atual == "vitoria"
+    else False
 )
 
 # -------------------------------------------------------------
@@ -368,9 +351,7 @@ e_admin = (
 with tab_sentimento:
     st.header("💭 Como estamos nos sentindo hoje?")
 
-    sentimentos_salvos = carregar_json(
-        FILE_SENTIMENTOS, DEFAULT_SENTIMENTOS
-    )
+    sentimentos_salvos = carregar_json(FILE_SENTIMENTOS, DEFAULT_SENTIMENTOS)
     opcoes_sentimentos = carregar_json(
         FILE_OPCOES_SENTIMENTOS, DEFAULT_OPCOES_SENTIMENTOS
     )
@@ -379,9 +360,9 @@ with tab_sentimento:
     opcoes_vitoria = opcoes_sentimentos.get("vitoria", [])
 
     st.markdown("### 🌟 Destaque do Dia:")
-    col_d1, col_d2 = st.columns(2)
 
-    with col_d1:
+    # SE FOR A LARISSA: SO MOSTRA A LISTA DA LARISSA
+    if st.session_state.usuario_atual == "larissa":
         s_larissa = (
             ", ".join(sentimentos_salvos.get("larissa", []))
             if sentimentos_salvos.get("larissa")
@@ -389,32 +370,50 @@ with tab_sentimento:
         )
         st.info(f"**Larissa está:**\n\n### {s_larissa}")
 
-    with col_d2:
-        s_vitoria = (
-            ", ".join(sentimentos_salvos.get("vitoria", []))
-            if sentimentos_salvos.get("vitoria")
-            else "Não selecionado"
-        )
-        st.info(f"**Vitória está:**\n\n### {s_vitoria}")
+        st.markdown("---")
+        st.subheader("Marque como você está se sentindo agora:")
 
-    st.markdown("---")
-    st.subheader("Marque como você está se sentindo agora:")
+        novo_larissa = []
+        st.write("🌸 **Sua Lista (Larissa):**")
+        for rotulo in opcoes_larissa:
+            marcado_padrao = rotulo in sentimentos_salvos.get("larissa", [])
+            if st.checkbox(rotulo, value=marcado_padrao, key=f"chk_l_{rotulo}"):
+                novo_larissa.append(rotulo)
 
-    col_l, col_v = st.columns(2)
+        st.markdown("<br>", unsafe_allow_html=True)
+        if st.button("💾 Salvar Meu Sentimento De Hoje", key="btn_salv_sent_l"):
+            sentimentos_salvos["larissa"] = novo_larissa
+            salvar_json(FILE_SENTIMENTOS, sentimentos_salvos)
+            st.success("Seu sentimento foi atualizado!")
+            st.rerun()
 
-    novo_larissa = list(sentimentos_salvos.get("larissa", []))
-    novo_vitoria = list(sentimentos_salvos.get("vitoria", []))
+    else:
+        col_d1, col_d2 = st.columns(2)
+        with col_d1:
+            s_larissa = (
+                ", ".join(sentimentos_salvos.get("larissa", []))
+                if sentimentos_salvos.get("larissa")
+                else "Não selecionado"
+            )
+            st.info(f"**Larissa está:**\n\n### {s_larissa}")
 
-    # Lista da Larissa
-    with col_l:
-        st.write("🌸 **Lista da Larissa:**")
-        if st.session_state.usuario_atual == "larissa":
-            novo_larissa = []
-            for rotulo in opcoes_larissa:
-                marcado_padrao = rotulo in sentimentos_salvos.get("larissa", [])
-                if st.checkbox(rotulo, value=marcado_padrao, key=f"chk_l_{rotulo}"):
-                    novo_larissa.append(rotulo)
-        else:
+        with col_d2:
+            s_vitoria = (
+                ", ".join(sentimentos_salvos.get("vitoria", []))
+                if sentimentos_salvos.get("vitoria")
+                else "Não selecionado"
+            )
+            st.info(f"**Vitória está:**\n\n### {s_vitoria}")
+
+        st.markdown("---")
+        st.subheader("Marque como você está se sentindo agora:")
+
+        col_l, col_v = st.columns(2)
+        novo_larissa = list(sentimentos_salvos.get("larissa", []))
+        novo_vitoria = list(sentimentos_salvos.get("vitoria", []))
+
+        with col_l:
+            st.write("🌸 **Lista da Larissa:**")
             for rotulo in opcoes_larissa:
                 st.checkbox(
                     rotulo,
@@ -423,39 +422,32 @@ with tab_sentimento:
                     key=f"dis_l_{rotulo}",
                 )
 
-    # Lista da Vitória
-    with col_v:
-        st.write("🌿 **Lista da Vitória:**")
-        if st.session_state.usuario_atual == "vitoria":
+        with col_v:
+            st.write("🌿 **Lista da Vitória:**")
             novo_vitoria = []
             for rotulo in opcoes_vitoria:
                 marcado_padrao = rotulo in sentimentos_salvos.get("vitoria", [])
-                if st.checkbox(rotulo, value=marcado_padrao, key=f"chk_v_{rotulo}"):
+                if st.checkbox(
+                    rotulo, value=marcado_padrao, key=f"chk_v_{rotulo}"
+                ):
                     novo_vitoria.append(rotulo)
-        else:
-            for rotulo in opcoes_vitoria:
-                st.checkbox(
-                    rotulo,
-                    value=(rotulo in sentimentos_salvos.get("vitoria", [])),
-                    disabled=True,
-                    key=f"dis_v_{rotulo}",
-                )
 
-    st.markdown("<br>", unsafe_allow_html=True)
-    if st.button("💾 Salvar Meu Sentimento De Hoje"):
-        sentimentos_salvos["larissa"] = novo_larissa
-        sentimentos_salvos["vitoria"] = novo_vitoria
-        salvar_json(FILE_SENTIMENTOS, sentimentos_salvos)
-        st.success("Seu sentimento foi atualizado!")
-        st.rerun()
+        st.markdown("<br>", unsafe_allow_html=True)
+        if st.button("💾 Salvar Meu Sentimento De Hoje", key="btn_salv_sent_v"):
+            sentimentos_salvos["vitoria"] = novo_vitoria
+            salvar_json(FILE_SENTIMENTOS, sentimentos_salvos)
+            st.success("Seu sentimento foi atualizado!")
+            st.rerun()
 
     # MODO EDIÇÃO: ADICIONAR E REMOVER OPÇÕES DE SENTIMENTOS
     if e_admin:
         st.markdown("---")
         st.subheader("✏️ Gerenciar Lista de Sentimentos (Modo Edição)")
-        
-        tab_s1, tab_s2 = st.tabs(["🌸 Opções da Larissa", "🌿 Opções da Vitória"])
-        
+
+        tab_s1, tab_s2 = st.tabs(
+            ["🌸 Opções da Larissa", "🌿 Opções da Vitória"]
+        )
+
         with tab_s1:
             st.write("**Opções Atuais da Larissa:**")
             for idx_s, item_s in enumerate(opcoes_larissa):
@@ -465,16 +457,21 @@ with tab_sentimento:
                 with col_s_del:
                     if st.button(f"🗑️ Excluir", key=f"btn_del_sl_{idx_s}"):
                         opcoes_sentimentos["larissa"].pop(idx_s)
-                        salvar_json(FILE_OPCOES_SENTIMENTOS, opcoes_sentimentos)
+                        salvar_json(
+                            FILE_OPCOES_SENTIMENTOS, opcoes_sentimentos
+                        )
                         st.success("Opção removida!")
                         st.rerun()
-            
-            add_sent_l = st.text_input("Novo sentimento para a Larissa (ex: Radiante ✨):", key="in_add_sl")
+
+            add_sent_l = st.text_input(
+                "Novo sentimento para a Larissa (ex: Radiante ✨):",
+                key="in_add_sl",
+            )
             if st.button("➕ Adicionar Sentimento (Larissa)", key="btn_add_sl"):
                 if add_sent_l:
                     opcoes_sentimentos["larissa"].append(add_sent_l)
                     salvar_json(FILE_OPCOES_SENTIMENTOS, opcoes_sentimentos)
-                    st.success("Novo sentimento adicionado à lista da Larissa!")
+                    st.success("Novo sentimento adicionado!")
                     st.rerun()
 
         with tab_s2:
@@ -486,16 +483,21 @@ with tab_sentimento:
                 with col_s_del:
                     if st.button(f"🗑️ Excluir", key=f"btn_del_sv_{idx_s}"):
                         opcoes_sentimentos["vitoria"].pop(idx_s)
-                        salvar_json(FILE_OPCOES_SENTIMENTOS, opcoes_sentimentos)
+                        salvar_json(
+                            FILE_OPCOES_SENTIMENTOS, opcoes_sentimentos
+                        )
                         st.success("Opção removida!")
                         st.rerun()
-            
-            add_sent_v = st.text_input("Novo sentimento para a Vitória (ex: Com preguiça 😴):", key="in_add_sv")
+
+            add_sent_v = st.text_input(
+                "Novo sentimento para a Vitória (ex: Com preguiça 😴):",
+                key="in_add_sv",
+            )
             if st.button("➕ Adicionar Sentimento (Vitória)", key="btn_add_sv"):
                 if add_sent_v:
                     opcoes_sentimentos["vitoria"].append(add_sent_v)
                     salvar_json(FILE_OPCOES_SENTIMENTOS, opcoes_sentimentos)
-                    st.success("Novo sentimento adicionado à lista da Vitória!")
+                    st.success("Novo sentimento adicionado!")
                     st.rerun()
 
 # =============================================================
@@ -505,38 +507,72 @@ with tab_recado:
     st.header("☀️ Lembrete pro meu cheirinho")
 
     recados = carregar_json(FILE_RECADO, DEFAULT_RECADO)
+
+    # RECADO PRINCIPAL DO DIA (DESTAQUE GRANDE)
     st.info(f"### {recados.get('hoje', '')}")
+    st.caption(
+        f"🕒 Publicado em: {recados.get('data_hora_hoje', 'Data não informada')}"
+    )
 
     img_hoje = recados.get("imagem_hoje", "")
     if img_hoje and os.path.exists(img_hoje):
         st.image(carregar_imagem_correta(img_hoje), use_container_width=True)
 
+    # RESPOSTA ATUAL DA LARISSA
     resp_atual = recados.get("resposta_larissa", "")
-    if resp_atual:
-        st.markdown("#### 👇 Resposta da Larissa:")
-        st.success(f"💬 **Larissa:** {resp_atual}")
+    img_resp_atual = recados.get("imagem_resposta_larissa", "")
 
-    # RESPOSTA EXCLUSIVA DA LARISSA
+    if resp_atual or img_resp_atual:
+        st.markdown("#### 👇 Resposta da Larissa:")
+        if resp_atual:
+            st.success(f"💬 **Larissa:** {resp_atual}")
+        if recados.get("data_hora_resposta"):
+            st.caption(f"🕒 Respondido em: {recados.get('data_hora_resposta')}")
+        if img_resp_atual and os.path.exists(img_resp_atual):
+            st.image(
+                carregar_imagem_correta(img_resp_atual),
+                width=250,
+                caption="Foto da Larissa 🌸",
+            )
+
+    # RESPOSTA DA LARISSA COM UPLOAD DE FOTO
     if st.session_state.usuario_atual == "larissa":
         st.markdown("---")
-        st.markdown("### 👇 Resposta:")
+        st.markdown("### 👇 Resposta da Larissa:")
         texto_resposta = st.text_area(
             "Escreva aqui sua resposta se quiser:",
             value=resp_atual,
             key="input_resp_larissa",
             placeholder="Digite algo para responder o recado...",
         )
+        up_img_resp = st.file_uploader(
+            "Adicionar uma foto na resposta (opcional):",
+            type=["png", "jpg", "jpeg", "webp"],
+            key="up_img_resp_larissa",
+        )
 
         if st.button("💌 Enviar Resposta", key="btn_env_resposta"):
             recados["resposta_larissa"] = texto_resposta
+            recados["data_hora_resposta"] = datetime.now().strftime(
+                "%d/%m/%Y às %H:%M"
+            )
+
+            if up_img_resp is not None:
+                file_path = os.path.join(
+                    UPLOADS_DIR, "resp_larissa_" + up_img_resp.name
+                )
+                with open(file_path, "wb") as f:
+                    f.write(up_img_resp.getbuffer())
+                recados["imagem_resposta_larissa"] = file_path
+
             salvar_json(FILE_RECADO, recados)
             st.success("Sua resposta foi enviada com sucesso! 💕")
             st.rerun()
 
-    # ADICIONAR NOVO LEMBRETE + FOTO (PERFIL VITÓRIA SEM PRECISAR DE MODO EDIÇÃO)
+    # ADICIONAR NOVO LEMBRETE (PERFIL VITÓRIA)
     if st.session_state.usuario_atual == "vitoria":
         st.markdown("---")
-        st.subheader("✍️ Adicionar Lembrete do Dia")
+        st.subheader("✍️ Publicar Novo Lembrete Do Dia")
         novo_recado_vit = st.text_area(
             "Escreva o novo lembrete:",
             value=recados.get("hoje", ""),
@@ -549,7 +585,28 @@ with tab_recado:
         )
 
         if st.button("💌 Publicar Lembrete Hoje", key="btn_pub_lembrete_vit"):
+            # Move o recado atual anterior para o histórico antes de substituir!
+            if recados.get("hoje"):
+                historico_item = {
+                    "recado": recados.get("hoje", ""),
+                    "data_hora_hoje": recados.get("data_hora_hoje", ""),
+                    "imagem_hoje": recados.get("imagem_hoje", ""),
+                    "resposta_larissa": recados.get("resposta_larissa", ""),
+                    "imagem_resposta_larissa": recados.get(
+                        "imagem_resposta_larissa", ""
+                    ),
+                    "data_hora_resposta": recados.get("data_hora_resposta", ""),
+                }
+                if "historico" not in recados:
+                    recados["historico"] = []
+                recados["historico"].insert(0, historico_item)
+
+            # Define o novo recado
             recados["hoje"] = novo_recado_vit
+            recados["data_hora_hoje"] = datetime.now().strftime(
+                "%d/%m/%Y às %H:%M"
+            )
+
             if up_img_vit_direto is not None:
                 file_path = os.path.join(
                     UPLOADS_DIR, "recado_hoje_" + up_img_vit_direto.name
@@ -557,92 +614,58 @@ with tab_recado:
                 with open(file_path, "wb") as f:
                     f.write(up_img_vit_direto.getbuffer())
                 recados["imagem_hoje"] = file_path
+            else:
+                recados["imagem_hoje"] = ""
+
             recados["resposta_larissa"] = ""
+            recados["imagem_resposta_larissa"] = ""
+            recados["data_hora_resposta"] = ""
+
             salvar_json(FILE_RECADO, recados)
             st.success("Novo lembrete publicado no app!")
             st.rerun()
 
-    if recados.get("amanha"):
-        st.caption(
-            "📌 *Existe um recado agendado preparado para carregar amanhã!*"
-        )
-
-    # MODO EDIÇÃO DA VITÓRIA (GERENCIAR / AGENDAR)
-    if e_admin:
-        st.markdown("---")
-        st.subheader("✏️ Gerenciar Recados (Modo Edição)")
-
-        st.markdown("**1. Editar Recado de Hoje (Exibido Agora):**")
-        recado_hoje_edit = st.text_area(
-            "Mensagem Atual:",
-            value=recados.get("hoje", ""),
-            key="recado_hoje_text",
-        )
-        up_img_hoje = st.file_uploader(
-            "Adicionar/Trocar Imagem do Recado de Hoje:",
-            type=["png", "jpg", "jpeg", "webp"],
-            key="up_img_hoje_file",
-        )
-
-        if st.button("💾 Alterar Recado e Imagem de Hoje", key="btn_salvar_hoje"):
-            recados["hoje"] = recado_hoje_edit
-            if up_img_hoje is not None:
-                file_path = os.path.join(
-                    UPLOADS_DIR, "recado_hoje_" + up_img_hoje.name
+    # HISTÓRICO DE RECADOS ANTERIORES (TAMANHO MENOR + HORA E DATA)
+    st.markdown("---")
+    with st.expander("📜 Histórico de Recados Anteriores", expanded=False):
+        historico = recados.get("historico", [])
+        if not historico:
+            st.write("Ainda não há recados guardados no histórico.")
+        else:
+            for idx_h, item_h in enumerate(historico):
+                st.markdown(
+                    f"""
+                    <div class="card-historico">
+                        <b>📌 Recado:</b> {item_h.get('recado', '')}<br>
+                        <small>🕒 {item_h.get('data_hora_hoje', '')}</small>
+                    </div>
+                """,
+                    unsafe_allow_html=True,
                 )
-                with open(file_path, "wb") as f:
-                    f.write(up_img_hoje.getbuffer())
-                recados["imagem_hoje"] = file_path
-            recados["resposta_larissa"] = ""
-            salvar_json(FILE_RECADO, recados)
-            st.success("Recado atualizado!")
-            st.rerun()
-
-        st.markdown("---")
-
-        st.markdown("**2. Agendar / Criar Recado para Amanhã:**")
-        recado_amanha_edit = st.text_area(
-            "Digite o recado que será exibido amanhã:",
-            value=recados.get("amanha", ""),
-            key="recado_amanha_text",
-        )
-        up_img_amanha = st.file_uploader(
-            "Adicionar Imagem para o Recado de Amanhã:",
-            type=["png", "jpg", "jpeg", "webp"],
-            key="up_img_amanha_file",
-        )
-
-        col_r1, col_r2 = st.columns(2)
-        with col_r1:
-            if st.button(
-                "➕ Agendar Recado e Imagem para Amanhã",
-                key="btn_salvar_amanha",
-            ):
-                recados["amanha"] = recado_amanha_edit
-                if up_img_amanha is not None:
-                    file_path = os.path.join(
-                        UPLOADS_DIR, "recado_amanha_" + up_img_amanha.name
-                    )
-                    with open(file_path, "wb") as f:
-                        f.write(up_img_amanha.getbuffer())
-                    recados["imagem_amanha"] = file_path
-                salvar_json(FILE_RECADO, recados)
-                st.success("Recado de amanhã guardado!")
-                st.rerun()
-        with col_r2:
-            if recados.get("amanha"):
-                if st.button(
-                    "🚀 Promover Recado de Amanhã para Hoje",
-                    key="btn_promover",
+                if item_h.get("imagem_hoje") and os.path.exists(
+                    item_h.get("imagem_hoje")
                 ):
-                    recados["hoje"] = recados["amanha"]
-                    recados["imagem_hoje"] = recados.get("imagem_amanha", "")
-                    recados["amanha"] = ""
-                    recados["imagem_amanha"] = ""
-                    recados["resposta_larissa"] = ""
-                    salvar_json(FILE_RECADO, recados)
-                    st.success("Recado de amanhã promovido a Recado Atual!")
-                    st.rerun()
+                    st.image(
+                        carregar_imagem_correta(item_h.get("imagem_hoje")),
+                        width=200,
+                    )
+
+                if item_h.get("resposta_larissa"):
+                    st.write(
+                        f"💬 **Resposta Larissa:** {item_h.get('resposta_larissa')}"
+                    )
+                    if item_h.get("data_hora_resposta"):
+                        st.caption(f"🕒 {item_h.get('data_hora_resposta')}")
+                if item_h.get("imagem_resposta_larissa") and os.path.exists(
+                    item_h.get("imagem_resposta_larissa")
+                ):
+                    st.image(
+                        carregar_imagem_correta(
+                            item_h.get("imagem_resposta_larissa")
+                        ),
+                        width=180,
+                    )
+                st.markdown("<hr style='margin: 8px 0;'>", unsafe_allow_html=True)
 
 # =============================================================
 # ABA 3: MÚSICAS
@@ -655,6 +678,10 @@ with tab_musicas:
     for idx, m in enumerate(musicas):
         st.subheader(f"🎵 {m['nome']}")
         st.write(f"👉 [Ouvir no Spotify]({m['link']})")
+        if "data_hora" in m:
+            st.caption(
+                f"🕒 Adicionado por {m.get('autor', 'Nós')} em {m['data_hora']}"
+            )
 
         if e_admin:
             novo_nome = st.text_input(
@@ -669,7 +696,8 @@ with tab_musicas:
                 if st.button(
                     f"💾 Alterar Música #{idx+1}", key=f"btn_m_up_{idx}"
                 ):
-                    musicas[idx] = {"nome": novo_nome, "link": novo_link}
+                    musicas[idx]["nome"] = novo_nome
+                    musicas[idx]["link"] = novo_link
                     salvar_json(FILE_MUSICAS, musicas)
                     st.success("Música alterada!")
                     st.rerun()
@@ -683,12 +711,11 @@ with tab_musicas:
                     st.rerun()
         st.markdown("---")
 
-    st.subheader(
-        "✍️ Escreva aqui quais músicas que te lembram nós: Nome da música / Artista"
-    )
+    # PERFIL LARISSA E VITÓRIA PODEM ADICIONAR MÚSICAS
+    st.subheader("✍️ Adicionar Música / Sugestão")
     sugestao_musica = st.text_input(
         "Música e Artista:",
-        key="sugestao_m_larissa",
+        key="sugestao_m_input",
         placeholder="Ex: Metamorfose Ambulante - Raul Seixas",
     )
     link_sugestao = st.text_input(
@@ -697,7 +724,7 @@ with tab_musicas:
         placeholder="https://open.spotify.com/track/...",
     )
 
-    if st.button("💖 Enviar Música para a Lista"):
+    if st.button("💖 Enviar Música para a Lista", key="btn_add_musica_geral"):
         if sugestao_musica:
             m_link = (
                 link_sugestao
@@ -705,7 +732,21 @@ with tab_musicas:
                 else "https://open.spotify.com/search/"
                 + sugestao_musica.replace(" ", "%20")
             )
-            musicas.append({"nome": sugestao_musica, "link": m_link})
+            quem_enviou = (
+                "Larissa"
+                if st.session_state.usuario_atual == "larissa"
+                else "Vitória"
+            )
+            data_agora = datetime.now().strftime("%d/%m/%Y às %H:%M")
+
+            musicas.append(
+                {
+                    "nome": sugestao_musica,
+                    "link": m_link,
+                    "data_hora": data_agora,
+                    "autor": quem_enviou,
+                }
+            )
             salvar_json(FILE_MUSICAS, musicas)
             st.success("Música adicionada à nossa lista com sucesso! 🎶")
             st.rerun()
@@ -775,7 +816,9 @@ with tab_fotos:
                 "Legenda da Foto (Galeria):", key="legenda_upload_file"
             )
 
-            if st.button("📤 Upload e Adicionar Foto", key="btn_upload_foto_save"):
+            if st.button(
+                "📤 Upload e Adicionar Foto", key="btn_upload_foto_save"
+            ):
                 if uploaded_file is not None:
                     file_path = os.path.join(UPLOADS_DIR, uploaded_file.name)
                     with open(file_path, "wb") as f:
@@ -813,6 +856,8 @@ with tab_datas:
     for idx, d in enumerate(datas):
         st.subheader(f"{d.get('icone', '🗓️')} {d['titulo']}")
         st.write(f"🗓️ **Data:** {d['data']}")
+        if "data_hora_adicionado" in d:
+            st.caption(f"🕒 Adicionado em: {d['data_hora_adicionado']}")
 
         if e_admin:
             n_ic = st.text_input(
@@ -846,74 +891,49 @@ with tab_datas:
                     st.rerun()
         st.markdown("---")
 
-    if e_admin:
-        st.subheader("➕ Adicionar Novo Marco/Data")
-        add_d_ic = st.text_input(
-            "Emoji/Ícone (ex: 💍, ✈️):", value="❤️", key="add_d_ic"
-        )
-        add_d_tit = st.text_input("Título do Evento:", key="add_d_tit")
-        add_d_dt = st.text_input("Data (ex: 12/05/2023):", key="add_d_dt")
+    # PERFIL LARISSA E VITÓRIA PODEM ADICIONAR DATAS
+    st.subheader("➕ Adicionar Nova Data Especial")
+    add_d_ic = st.text_input(
+        "Emoji/Ícone (ex: 💍, ✈️):", value="❤️", key="add_d_ic_geral"
+    )
+    add_d_tit = st.text_input("Título do Evento:", key="add_d_tit_geral")
+    add_d_dt = st.text_input(
+        "Data (ex: 12/05/2023):", key="add_d_dt_geral"
+    )
 
-        if st.button("➕ Adicionar Data", key="btn_add_data"):
-            if add_d_tit and add_d_dt:
-                datas.append(
-                    {"titulo": add_d_tit, "data": add_d_dt, "icone": add_d_ic}
-                )
-                salvar_json(FILE_DATAS, datas)
-                st.success("Nova data adicionada!")
-                st.rerun()
+    if st.button("➕ Adicionar Data", key="btn_add_data_geral"):
+        if add_d_tit and add_d_dt:
+            data_agora = datetime.now().strftime("%d/%m/%Y às %H:%M")
+            datas.append(
+                {
+                    "titulo": add_d_tit,
+                    "data": add_d_dt,
+                    "icone": add_d_ic,
+                    "data_hora_adicionado": data_agora,
+                }
+            )
+            salvar_json(FILE_DATAS, datas)
+            st.success("Nova data especial adicionada!")
+            st.rerun()
 
 # =============================================================
-# ABA 6: COMIDAS
+# ABA 6: COMIDAS (RECEITAS EM CASA PRIMEIRO)
 # =============================================================
 with tab_comidas:
     st.header("🍕 O Que Amamos Comer")
 
     comidas = carregar_json(FILE_COMIDAS, DEFAULT_COMIDAS)
-    subtab1, subtab2 = st.tabs(["Restaurantes / Entregas", "Receitas em Casa"])
+
+    # INVERTIDA A ORDEM DAS ABAS: RECEITAS EM CASA PRIMEIRO
+    subtab1, subtab2 = st.tabs(["Receitas em Casa", "Restaurantes / Entregas"])
 
     with subtab1:
-        st.subheader("Restaurantes & Entregas Favoritas")
-        for idx, item in enumerate(comidas.get("restaurantes", [])):
-            st.write(f"- {item}")
-            if e_admin:
-                novo_item = st.text_input(
-                    f"Editar #{idx+1}:", value=item, key=f"c_rest_{idx}"
-                )
-                c1, c2 = st.columns(2)
-                with c1:
-                    if st.button(
-                        f"💾 Alterar #{idx+1}", key=f"btn_cr_up_{idx}"
-                    ):
-                        comidas["restaurantes"][idx] = novo_item
-                        salvar_json(FILE_COMIDAS, comidas)
-                        st.rerun()
-                with c2:
-                    if st.button(
-                        f"🗑️ Excluir #{idx+1}", key=f"btn_cr_del_{idx}"
-                    ):
-                        comidas["restaurantes"].pop(idx)
-                        salvar_json(FILE_COMIDAS, comidas)
-                        st.rerun()
-
-        if e_admin:
-            st.markdown("---")
-            add_rest = st.text_input(
-                "Novo Restaurante / Delivery:", key="add_rest"
-            )
-            if st.button("➕ Adicionar Restaurante", key="btn_add_rest"):
-                if add_rest:
-                    comidas["restaurantes"].append(add_rest)
-                    salvar_json(FILE_COMIDAS, comidas)
-                    st.rerun()
-
-    with subtab2:
         st.subheader("Receitas Que Fazemos Juntos")
         for idx, item in enumerate(comidas.get("receitas", [])):
             st.write(f"- {item}")
             if e_admin:
                 novo_item = st.text_input(
-                    f"Editar #{idx+1}:", value=item, key=f"c_rec_{idx}"
+                    f"Editar Receita #{idx+1}:", value=item, key=f"c_rec_{idx}"
                 )
                 c1, c2 = st.columns(2)
                 with c1:
@@ -931,17 +951,69 @@ with tab_comidas:
                         salvar_json(FILE_COMIDAS, comidas)
                         st.rerun()
 
-        if e_admin:
-            st.markdown("---")
-            add_rec = st.text_input("Nova Receita:", key="add_rec")
-            if st.button("➕ Adicionar Receita", key="btn_add_rec"):
-                if add_rec:
-                    comidas["receitas"].append(add_rec)
-                    salvar_json(FILE_COMIDAS, comidas)
-                    st.rerun()
+    with subtab2:
+        st.subheader("Restaurantes & Entregas Favoritas")
+        for idx, item in enumerate(comidas.get("restaurantes", [])):
+            st.write(f"- {item}")
+            if e_admin:
+                novo_item = st.text_input(
+                    f"Editar Rest. #{idx+1}:", value=item, key=f"c_rest_{idx}"
+                )
+                c1, c2 = st.columns(2)
+                with c1:
+                    if st.button(
+                        f"💾 Alterar #{idx+1}", key=f"btn_cr_up_{idx}"
+                    ):
+                        comidas["restaurantes"][idx] = novo_item
+                        salvar_json(FILE_COMIDAS, comidas)
+                        st.rerun()
+                with c2:
+                    if st.button(
+                        f"🗑️ Excluir #{idx+1}", key=f"btn_cr_del_{idx}"
+                    ):
+                        comidas["restaurantes"].pop(idx)
+                        salvar_json(FILE_COMIDAS, comidas)
+                        st.rerun()
+
+    # CAIXINHA DE SUGESTÃO DE COMIDA COM DATA E HORA
+    st.markdown("---")
+    st.subheader("✍️ Deixe sua sugestão de comida/restaurante:")
+    tipo_comida_sug = st.radio(
+        "Categoria:",
+        ["🍝 Receita em Casa", "🍣 Restaurante / Delivery"],
+        horizontal=True,
+        key="sug_c_tipo",
+    )
+    sugestao_comida = st.text_input(
+        "Sua Sugestão de Comida:",
+        key="sugestao_comida_input",
+        placeholder="Ex: Torta de limão caseira...",
+    )
+
+    if st.button("💌 Enviar Sugestão de Comida", key="btn_sug_comida_send"):
+        if sugestao_comida:
+            quem_enviou = (
+                "Larissa"
+                if st.session_state.usuario_atual == "larissa"
+                else "Vitória"
+            )
+            data_agora = datetime.now().strftime("%d/%m/%Y às %H:%M")
+
+            if "Receita" in tipo_comida_sug:
+                comidas["receitas"].append(
+                    f"{sugestao_comida} (Sugestão de {quem_enviou} em {data_agora})"
+                )
+            else:
+                comidas["restaurantes"].append(
+                    f"{sugestao_comida} (Sugestão de {quem_enviou} em {data_agora})"
+                )
+
+            salvar_json(FILE_COMIDAS, comidas)
+            st.success("Sua sugestão de comida foi salva com sucesso! 💖")
+            st.rerun()
 
 # =============================================================
-# ABA 7: ENCONTROS (DATES)
+# ABA 7: ENCONTROS (DATES COM REGISTRO DE DATA/HORA)
 # =============================================================
 with tab_dates:
     st.header("🥂 Nossos Encontros (Feitos & A Fazer)")
@@ -1011,33 +1083,23 @@ with tab_dates:
         placeholder="Ex: Noite da pizza brotinho artesanal...",
     )
 
-    if st.button("💌 Enviar", key="btn_sug_date_send"):
+    if st.button("💌 Enviar Sugestão de Date", key="btn_sug_date_send"):
         if sugestao_date:
+            quem_enviou = (
+                "Larissa"
+                if st.session_state.usuario_atual == "larissa"
+                else "Vitória"
+            )
+            data_agora = datetime.now().strftime("%d/%m/%Y às %H:%M")
+            texto_formatado = (
+                f"{sugestao_date} (Sugerido por {quem_enviou} em {data_agora})"
+            )
+
             if "Casa" in tipo_date_sug:
-                dates["casa"].append(sugestao_date)
+                dates["casa"].append(texto_formatado)
             else:
-                dates["rua"].append(sugestao_date)
+                dates["rua"].append(texto_formatado)
+
             salvar_json(FILE_DATES, dates)
             st.success("Sua sugestão de date foi enviada com sucesso! 💖")
             st.rerun()
-
-    if e_admin:
-        st.markdown("---")
-        st.subheader("➕ Adicionar Nova Ideia de Encontro (Modo Edição)")
-        tipo_date = st.radio(
-            "Tipo de Encontro Admin:",
-            ["🏠 Em Casa", "🌳 Fora de Casa"],
-            horizontal=True,
-            key="add_d_tipo",
-        )
-        nova_ideia = st.text_input("Descrição do Encontro:", key="add_d_desc")
-
-        if st.button("➕ Adicionar Encontro", key="btn_add_date_main"):
-            if nova_ideia:
-                if "Casa" in tipo_date:
-                    dates["casa"].append(nova_ideia)
-                else:
-                    dates["rua"].append(nova_ideia)
-                salvar_json(FILE_DATES, dates)
-                st.success("Nova ideia de encontro adicionada!")
-                st.rerun()
