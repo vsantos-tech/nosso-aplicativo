@@ -1,13 +1,13 @@
-from datetime import datetime, timezone, timedelta
 import base64
 import json
 import os
-import streamlit as st
+from datetime import datetime, timedelta, timezone
 from PIL import Image, ImageOps
+import streamlit as st
 
-# Configuração da página
+# Configuração da página (Modificado para 'wide' para expandir na tela inteira)
 st.set_page_config(
-    page_title="Nosso Aplicativo 💗", page_icon="💗", layout="centered"
+    page_title="Nosso Aplicativo 💗", page_icon="💗", layout="wide"
 )
 
 UPLOADS_DIR = "uploads"
@@ -16,14 +16,16 @@ if not os.path.exists(UPLOADS_DIR):
 
 
 # -------------------------------------------------------------
-# HORÁRIO OFICIAL DE BRASÍLIA (UTC-3)
+# HORÁRIO OFICIAL DE BRASÍLIA (UTC-3 ATUALIZADO)
 # -------------------------------------------------------------
 def obter_agora_brasilia():
     fuso_brasilia = timezone(timedelta(hours=-3))
     return datetime.now(fuso_brasilia)
 
+
 def formatar_data_hora():
     return obter_agora_brasilia().strftime("%d/%m/%Y às %H:%M")
+
 
 def formatar_apenas_data():
     return obter_agora_brasilia().strftime("%d/%m/%Y")
@@ -46,7 +48,7 @@ def carregar_imagem_correta(caminho_ou_url):
 
 
 # -------------------------------------------------------------
-# ESTILIZAÇÃO E REMOÇÃO DE BARRAS
+# ESTILIZAÇÃO E EXPANSÃO TOTAL (REMOÇÃO DA BORDA BRANCA SUPERIOR)
 # -------------------------------------------------------------
 def carregar_estilo_fundo():
     bg_image_path = None
@@ -64,6 +66,23 @@ def carregar_estilo_fundo():
 
     css = f"""
         <style>
+        /* Zera margens do navegador e preenchimentos do Streamlit */
+        html, body, [data-testid="stAppViewContainer"] {{
+            margin: 0 !important;
+            padding: 0 !important;
+            width: 100vw !important;
+        }}
+
+        /* Remove a borda/espaciamento branco do topo da página */
+        .block-container {{
+            padding-top: 0rem !important;
+            padding-bottom: 2rem !important;
+            padding-left: 1.5rem !important;
+            padding-right: 1.5rem !important;
+            max-width: 100% !important;
+        }}
+
+        /* Esconde elementos nativos do topo que geram espaço em branco */
         header, 
         [data-testid="stHeader"], 
         [data-testid="stAppToolbar"], 
@@ -88,7 +107,7 @@ def carregar_estilo_fundo():
             background-repeat: no-repeat;
             background-attachment: fixed;
             margin-top: 0px !important;
-            padding-top: 10px !important;
+            padding-top: 0px !important;
         }}
         
         [data-testid="stSidebar"] {{
@@ -112,8 +131,8 @@ def carregar_estilo_fundo():
             color: #4A1228 !important;
             font-weight: bold;
             border-radius: 8px 8px 0px 0px;
-            padding: 4px 6px !important;
-            font-size: 11px !important;
+            padding: 6px 10px !important;
+            font-size: 13px !important;
             flex-grow: 1 !important;
             text-align: center !important;
             min-width: 0 !important;
@@ -154,7 +173,7 @@ def carregar_estilo_fundo():
         .card-historico {{
             background-color: rgba(255, 255, 255, 0.85);
             border-radius: 10px;
-            padding: 10px;
+            padding: 12px;
             margin-bottom: 10px;
             border-left: 4px solid #E65C83;
             font-size: 13px;
@@ -520,25 +539,12 @@ with tab_sentimento:
                     st.rerun()
 
 # =============================================================
-# ABA 2: RECADO (HORÁRIOS FIXOS DO JSON)
+# ABA 2: RECADO (MANTÉM HORÁRIOS SALVOS E REGISTRA NOVOS EM BRASÍLIA)
 # =============================================================
 with tab_recado:
     st.header("☀️ Lembrete pro meu cheirinho")
 
     recados = carregar_json(FILE_RECADO, DEFAULT_RECADO)
-
-    # CORREÇÃO PONTUAL DOS RECADOS ATUAIS
-    precisa_salvar = False
-    if recados.get("data_hora_hoje") != "22/07/2026 às 18:40":
-        recados["data_hora_hoje"] = "22/07/2026 às 18:40"
-        precisa_salvar = True
-
-    if recados.get("resposta_larissa") and recados.get("data_hora_resposta") != "22/07/2026 às 19:00":
-        recados["data_hora_resposta"] = "22/07/2026 às 19:00"
-        precisa_salvar = True
-
-    if precisa_salvar:
-        salvar_json(FILE_RECADO, recados)
 
     hoje_br = formatar_apenas_data()
     data_recado = recados.get("data_dia", "")
@@ -599,7 +605,7 @@ with tab_recado:
             if img_resp_obj:
                 st.image(img_resp_obj, width=250, caption="Foto da Larissa 🌸")
 
-    # PERFIL LARISSA: RESPOSTA COM REGISTRO PERMANENTE DE DATA E HORA
+    # PERFIL LARISSA: RESPOSTA COM REGISTRO NOVO DE HORÁRIO DE BRASÍLIA
     if st.session_state.usuario_atual == "larissa":
         st.markdown("---")
         st.markdown("### 👇 Resposta da Larissa:")
@@ -631,6 +637,7 @@ with tab_recado:
 
         if st.button("💌 Enviar Resposta", key="btn_env_resposta"):
             recados["resposta_larissa"] = texto_resposta
+            # Grava o horário oficial de Brasília no momento da resposta
             recados["data_hora_resposta"] = formatar_data_hora()
 
             if up_img_resp is not None:
@@ -647,7 +654,7 @@ with tab_recado:
             st.success("Sua resposta foi enviada com sucesso! 💕")
             st.rerun()
 
-    # PERFIL VITÓRIA: PUBLICAR NOVO LEMBRETE
+    # PERFIL VITÓRIA: PUBLICAR NOVO LEMBRETE COM HORÁRIO DE BRASÍLIA
     if st.session_state.usuario_atual == "vitoria":
         st.markdown("---")
         st.subheader("✍️ Publicar Novo Lembrete Do Dia")
@@ -692,6 +699,7 @@ with tab_recado:
                 recados["historico"].insert(0, historico_item)
 
             recados["hoje"] = novo_recado_vit
+            # Captura a hora exata atual de Brasília ao postar
             recados["data_hora_hoje"] = formatar_data_hora()
             recados["data_dia"] = formatar_apenas_data()
 
