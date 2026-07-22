@@ -28,7 +28,7 @@ def carregar_imagem_correta(caminho_imagem):
 
 
 # -------------------------------------------------------------
-# ESTILIZAÇÃO E REMOÇÃO DE BARRAS PADAO
+# ESTILIZAÇÃO E REMOÇÃO DE BARRAS
 # -------------------------------------------------------------
 def carregar_estilo_fundo():
     bg_image_path = None
@@ -134,7 +134,7 @@ def carregar_estilo_fundo():
         }}
         
         .card-historico {{
-            background-color: rgba(255, 255, 255, 0.75);
+            background-color: rgba(255, 255, 255, 0.85);
             border-radius: 10px;
             padding: 10px;
             margin-bottom: 10px;
@@ -176,7 +176,7 @@ def salvar_json(filepath, data):
         json.dump(data, f, ensure_ascii=False, indent=4)
 
 
-DEFAULT_SENTIMENTOS = {"larissa": [], "vitoria": []}
+DEFAULT_SENTIMENTOS = {"larissa": [], "vitoria": [], "historico": []}
 DEFAULT_OPCOES_SENTIMENTOS = {
     "larissa": [
         "Contente 😊",
@@ -220,6 +220,7 @@ DEFAULT_FOTOS = [
     {
         "url": "https://images.unsplash.com/photo-1516589178581-6cd7833ae3b2?q=80&w=600",
         "legenda": "Nosso passeio favorito 🌿",
+        "data_hora": datetime.now().strftime("%d/%m/%Y às %H:%M"),
     }
 ]
 DEFAULT_DATAS = [
@@ -228,6 +229,7 @@ DEFAULT_DATAS = [
         "data": "12/05/2023",
         "icone": "🥂",
         "data_hora_adicionado": datetime.now().strftime("%d/%m/%Y às %H:%M"),
+        "autor": "Nós",
     }
 ]
 DEFAULT_COMIDAS = {
@@ -236,9 +238,9 @@ DEFAULT_COMIDAS = {
         "🍣 Japonês: Nosso lugar favorito",
         "🍕 Pizzaria: Cantina Especial",
     ],
-    "sugestoes": [],
+    "historico_sugestoes": [],
 }
-DEFAULT_DATES = {"casa": [], "rua": [], "sugestoes": []}
+DEFAULT_DATES = {"casa": [], "rua": [], "historico_sugestoes": []}
 
 # -------------------------------------------------------------
 # IDENTIFICAÇÃO DE USUÁRIA ("QUEM É VOCÊ?")
@@ -360,9 +362,9 @@ with tab_sentimento:
     opcoes_vitoria = opcoes_sentimentos.get("vitoria", [])
 
     st.markdown("### 🌟 Destaque do Dia:")
+    col_d1, col_d2 = st.columns(2)
 
-    # SE FOR A LARISSA: SO MOSTRA A LISTA DA LARISSA
-    if st.session_state.usuario_atual == "larissa":
+    with col_d1:
         s_larissa = (
             ", ".join(sentimentos_salvos.get("larissa", []))
             if sentimentos_salvos.get("larissa")
@@ -370,9 +372,21 @@ with tab_sentimento:
         )
         st.info(f"**Larissa está:**\n\n### {s_larissa}")
 
-        st.markdown("---")
-        st.subheader("Marque como você está se sentindo agora:")
+    with col_d2:
+        s_vitoria = (
+            ", ".join(sentimentos_salvos.get("vitoria", []))
+            if sentimentos_salvos.get("vitoria")
+            else "Não selecionado"
+        )
+        st.info(f"**Vitória está:**\n\n### {s_vitoria}")
 
+    st.markdown("---")
+    st.subheader("Marque como você está se sentindo agora:")
+
+    data_agora = datetime.now().strftime("%d/%m/%Y às %H:%M")
+
+    # PERFIL LARISSA: MOSTRA APENAS A LISTA DA LARISSA
+    if st.session_state.usuario_atual == "larissa":
         novo_larissa = []
         st.write("🌸 **Sua Lista (Larissa):**")
         for rotulo in opcoes_larissa:
@@ -383,70 +397,70 @@ with tab_sentimento:
         st.markdown("<br>", unsafe_allow_html=True)
         if st.button("💾 Salvar Meu Sentimento De Hoje", key="btn_salv_sent_l"):
             sentimentos_salvos["larissa"] = novo_larissa
+            if "historico" not in sentimentos_salvos:
+                sentimentos_salvos["historico"] = []
+            sentimentos_salvos["historico"].insert(
+                0,
+                {
+                    "autor": "Larissa",
+                    "sentimento": ", ".join(novo_larissa) if novo_larissa else "Nada marcado",
+                    "data_hora": data_agora,
+                },
+            )
             salvar_json(FILE_SENTIMENTOS, sentimentos_salvos)
             st.success("Seu sentimento foi atualizado!")
             st.rerun()
 
+    # PERFIL VITÓRIA: MOSTRA APENAS A LISTA DA VITÓRIA
     else:
-        col_d1, col_d2 = st.columns(2)
-        with col_d1:
-            s_larissa = (
-                ", ".join(sentimentos_salvos.get("larissa", []))
-                if sentimentos_salvos.get("larissa")
-                else "Não selecionado"
-            )
-            st.info(f"**Larissa está:**\n\n### {s_larissa}")
-
-        with col_d2:
-            s_vitoria = (
-                ", ".join(sentimentos_salvos.get("vitoria", []))
-                if sentimentos_salvos.get("vitoria")
-                else "Não selecionado"
-            )
-            st.info(f"**Vitória está:**\n\n### {s_vitoria}")
-
-        st.markdown("---")
-        st.subheader("Marque como você está se sentindo agora:")
-
-        col_l, col_v = st.columns(2)
-        novo_larissa = list(sentimentos_salvos.get("larissa", []))
-        novo_vitoria = list(sentimentos_salvos.get("vitoria", []))
-
-        with col_l:
-            st.write("🌸 **Lista da Larissa:**")
-            for rotulo in opcoes_larissa:
-                st.checkbox(
-                    rotulo,
-                    value=(rotulo in sentimentos_salvos.get("larissa", [])),
-                    disabled=True,
-                    key=f"dis_l_{rotulo}",
-                )
-
-        with col_v:
-            st.write("🌿 **Lista da Vitória:**")
-            novo_vitoria = []
-            for rotulo in opcoes_vitoria:
-                marcado_padrao = rotulo in sentimentos_salvos.get("vitoria", [])
-                if st.checkbox(
-                    rotulo, value=marcado_padrao, key=f"chk_v_{rotulo}"
-                ):
-                    novo_vitoria.append(rotulo)
+        novo_vitoria = []
+        st.write("🌿 **Sua Lista (Vitória):**")
+        for rotulo in opcoes_vitoria:
+            marcado_padrao = rotulo in sentimentos_salvos.get("vitoria", [])
+            if st.checkbox(rotulo, value=marcado_padrao, key=f"chk_v_{rotulo}"):
+                novo_vitoria.append(rotulo)
 
         st.markdown("<br>", unsafe_allow_html=True)
         if st.button("💾 Salvar Meu Sentimento De Hoje", key="btn_salv_sent_v"):
             sentimentos_salvos["vitoria"] = novo_vitoria
+            if "historico" not in sentimentos_salvos:
+                sentimentos_salvos["historico"] = []
+            sentimentos_salvos["historico"].insert(
+                0,
+                {
+                    "autor": "Vitória",
+                    "sentimento": ", ".join(novo_vitoria) if novo_vitoria else "Nada marcado",
+                    "data_hora": data_agora,
+                },
+            )
             salvar_json(FILE_SENTIMENTOS, sentimentos_salvos)
             st.success("Seu sentimento foi atualizado!")
             st.rerun()
+
+    # HISTÓRICO DE SENTIMENTOS
+    st.markdown("---")
+    with st.expander("📜 Histórico de Sentimentos Registrados", expanded=False):
+        hist_sent = sentimentos_salvos.get("historico", [])
+        if not hist_sent:
+            st.write("Nenhum histórico gravado ainda.")
+        else:
+            for item in hist_sent:
+                st.markdown(
+                    f"""
+                    <div class="card-historico">
+                        <b>{item.get('autor')}:</b> {item.get('sentimento')}<br>
+                        <small>🕒 {item.get('data_hora')}</small>
+                    </div>
+                """,
+                    unsafe_allow_html=True,
+                )
 
     # MODO EDIÇÃO: ADICIONAR E REMOVER OPÇÕES DE SENTIMENTOS
     if e_admin:
         st.markdown("---")
         st.subheader("✏️ Gerenciar Lista de Sentimentos (Modo Edição)")
 
-        tab_s1, tab_s2 = st.tabs(
-            ["🌸 Opções da Larissa", "🌿 Opções da Vitória"]
-        )
+        tab_s1, tab_s2 = st.tabs(["🌸 Opções da Larissa", "🌿 Opções da Vitória"])
 
         with tab_s1:
             st.write("**Opções Atuais da Larissa:**")
@@ -457,15 +471,12 @@ with tab_sentimento:
                 with col_s_del:
                     if st.button(f"🗑️ Excluir", key=f"btn_del_sl_{idx_s}"):
                         opcoes_sentimentos["larissa"].pop(idx_s)
-                        salvar_json(
-                            FILE_OPCOES_SENTIMENTOS, opcoes_sentimentos
-                        )
+                        salvar_json(FILE_OPCOES_SENTIMENTOS, opcoes_sentimentos)
                         st.success("Opção removida!")
                         st.rerun()
 
             add_sent_l = st.text_input(
-                "Novo sentimento para a Larissa (ex: Radiante ✨):",
-                key="in_add_sl",
+                "Novo sentimento para a Larissa:", key="in_add_sl"
             )
             if st.button("➕ Adicionar Sentimento (Larissa)", key="btn_add_sl"):
                 if add_sent_l:
@@ -483,15 +494,12 @@ with tab_sentimento:
                 with col_s_del:
                     if st.button(f"🗑️ Excluir", key=f"btn_del_sv_{idx_s}"):
                         opcoes_sentimentos["vitoria"].pop(idx_s)
-                        salvar_json(
-                            FILE_OPCOES_SENTIMENTOS, opcoes_sentimentos
-                        )
+                        salvar_json(FILE_OPCOES_SENTIMENTOS, opcoes_sentimentos)
                         st.success("Opção removida!")
                         st.rerun()
 
             add_sent_v = st.text_input(
-                "Novo sentimento para a Vitória (ex: Com preguiça 😴):",
-                key="in_add_sv",
+                "Novo sentimento para a Vitória:", key="in_add_sv"
             )
             if st.button("➕ Adicionar Sentimento (Vitória)", key="btn_add_sv"):
                 if add_sent_v:
@@ -508,17 +516,14 @@ with tab_recado:
 
     recados = carregar_json(FILE_RECADO, DEFAULT_RECADO)
 
-    # RECADO PRINCIPAL DO DIA (DESTAQUE GRANDE)
+    # RECADO PRINCIPAL DO DIA
     st.info(f"### {recados.get('hoje', '')}")
-    st.caption(
-        f"🕒 Publicado em: {recados.get('data_hora_hoje', 'Data não informada')}"
-    )
+    st.caption(f"🕒 Publicado em: {recados.get('data_hora_hoje', '')}")
 
     img_hoje = recados.get("imagem_hoje", "")
     if img_hoje and os.path.exists(img_hoje):
         st.image(carregar_imagem_correta(img_hoje), use_container_width=True)
 
-    # RESPOSTA ATUAL DA LARISSA
     resp_atual = recados.get("resposta_larissa", "")
     img_resp_atual = recados.get("imagem_resposta_larissa", "")
 
@@ -585,7 +590,6 @@ with tab_recado:
         )
 
         if st.button("💌 Publicar Lembrete Hoje", key="btn_pub_lembrete_vit"):
-            # Move o recado atual anterior para o histórico antes de substituir!
             if recados.get("hoje"):
                 historico_item = {
                     "recado": recados.get("hoje", ""),
@@ -601,7 +605,6 @@ with tab_recado:
                     recados["historico"] = []
                 recados["historico"].insert(0, historico_item)
 
-            # Define o novo recado
             recados["hoje"] = novo_recado_vit
             recados["data_hora_hoje"] = datetime.now().strftime(
                 "%d/%m/%Y às %H:%M"
@@ -625,14 +628,14 @@ with tab_recado:
             st.success("Novo lembrete publicado no app!")
             st.rerun()
 
-    # HISTÓRICO DE RECADOS ANTERIORES (TAMANHO MENOR + HORA E DATA)
+    # HISTÓRICO DE RECADOS ANTERIORES
     st.markdown("---")
     with st.expander("📜 Histórico de Recados Anteriores", expanded=False):
         historico = recados.get("historico", [])
         if not historico:
             st.write("Ainda não há recados guardados no histórico.")
         else:
-            for idx_h, item_h in enumerate(historico):
+            for item_h in historico:
                 st.markdown(
                     f"""
                     <div class="card-historico">
@@ -751,6 +754,20 @@ with tab_musicas:
             st.success("Música adicionada à nossa lista com sucesso! 🎶")
             st.rerun()
 
+    # HISTÓRICO DE MÚSICAS
+    st.markdown("---")
+    with st.expander("📜 Histórico / Registro de Músicas", expanded=False):
+        for item_m in musicas:
+            st.markdown(
+                f"""
+                <div class="card-historico">
+                    <b>🎵 {item_m.get('nome')}</b><br>
+                    <small>👤 Por: {item_m.get('autor', 'Nós')} | 🕒 {item_m.get('data_hora', 'Início')}</small>
+                </div>
+            """,
+                unsafe_allow_html=True,
+            )
+
 # =============================================================
 # ABA 4: FOTOS
 # =============================================================
@@ -785,7 +802,11 @@ with tab_fotos:
                     if st.button(
                         f"💾 Alterar #{idx+1}", key=f"btn_f_up_{idx}"
                     ):
-                        fotos[idx] = {"url": nova_url, "legenda": nova_legenda}
+                        fotos[idx] = {
+                            "url": nova_url,
+                            "legenda": nova_legenda,
+                            "data_hora": foto.get("data_hora", ""),
+                        }
                         salvar_json(FILE_FOTOS, fotos)
                         st.success("Foto alterada!")
                         st.rerun()
@@ -806,6 +827,8 @@ with tab_fotos:
             ["📁 Enviar do PC/Galeria do Celular", "🔗 Usar Link da Web"]
         )
 
+        data_agora = datetime.now().strftime("%d/%m/%Y às %H:%M")
+
         with tab_up1:
             uploaded_file = st.file_uploader(
                 "Escolha uma foto da galeria ou computador:",
@@ -824,14 +847,16 @@ with tab_fotos:
                     with open(file_path, "wb") as f:
                         f.write(uploaded_file.getbuffer())
 
-                    fotos.append({"url": file_path, "legenda": legenda_upload})
+                    fotos.append(
+                        {
+                            "url": file_path,
+                            "legenda": legenda_upload,
+                            "data_hora": data_agora,
+                        }
+                    )
                     salvar_json(FILE_FOTOS, fotos)
                     st.success("Foto enviada da galeria e salva no mural!")
                     st.rerun()
-                else:
-                    st.warning(
-                        "Selecione um arquivo de imagem da sua galeria primeiro."
-                    )
 
         with tab_up2:
             add_f_url = st.text_input(
@@ -840,10 +865,30 @@ with tab_fotos:
             add_f_leg = st.text_input("Legenda da Foto (Web):", key="add_f_leg")
             if st.button("➕ Adicionar Foto via Link", key="btn_add_foto_url"):
                 if add_f_url:
-                    fotos.append({"url": add_f_url, "legenda": add_f_leg})
+                    fotos.append(
+                        {
+                            "url": add_f_url,
+                            "legenda": add_f_leg,
+                            "data_hora": data_agora,
+                        }
+                    )
                     salvar_json(FILE_FOTOS, fotos)
                     st.success("Nova foto da web adicionada!")
                     st.rerun()
+
+    # HISTÓRICO DE FOTOS
+    st.markdown("---")
+    with st.expander("📜 Histórico de Fotos Adicionadas", expanded=False):
+        for item_f in fotos:
+            st.markdown(
+                f"""
+                <div class="card-historico">
+                    <b>📸 Legenda:</b> {item_f.get('legenda', 'Sem legenda')}<br>
+                    <small>🕒 Postada em: {item_f.get('data_hora', 'Início')}</small>
+                </div>
+            """,
+                unsafe_allow_html=True,
+            )
 
 # =============================================================
 # ABA 5: DATAS
@@ -857,7 +902,9 @@ with tab_datas:
         st.subheader(f"{d.get('icone', '🗓️')} {d['titulo']}")
         st.write(f"🗓️ **Data:** {d['data']}")
         if "data_hora_adicionado" in d:
-            st.caption(f"🕒 Adicionado em: {d['data_hora_adicionado']}")
+            st.caption(
+                f"🕒 Adicionado por {d.get('autor', 'Nós')} em {d['data_hora_adicionado']}"
+            )
 
         if e_admin:
             n_ic = st.text_input(
@@ -877,7 +924,9 @@ with tab_datas:
                 if st.button(
                     f"💾 Alterar Data #{idx+1}", key=f"btn_d_up_{idx}"
                 ):
-                    datas[idx] = {"titulo": n_tit, "data": n_dt, "icone": n_ic}
+                    datas[idx]["titulo"] = n_tit
+                    datas[idx]["data"] = n_dt
+                    datas[idx]["icone"] = n_ic
                     salvar_json(FILE_DATAS, datas)
                     st.success("Data alterada!")
                     st.rerun()
@@ -897,24 +946,42 @@ with tab_datas:
         "Emoji/Ícone (ex: 💍, ✈️):", value="❤️", key="add_d_ic_geral"
     )
     add_d_tit = st.text_input("Título do Evento:", key="add_d_tit_geral")
-    add_d_dt = st.text_input(
-        "Data (ex: 12/05/2023):", key="add_d_dt_geral"
-    )
+    add_d_dt = st.text_input("Data (ex: 12/05/2023):", key="add_d_dt_geral")
 
     if st.button("➕ Adicionar Data", key="btn_add_data_geral"):
         if add_d_tit and add_d_dt:
             data_agora = datetime.now().strftime("%d/%m/%Y às %H:%M")
+            quem_enviou = (
+                "Larissa"
+                if st.session_state.usuario_atual == "larissa"
+                else "Vitória"
+            )
             datas.append(
                 {
                     "titulo": add_d_tit,
                     "data": add_d_dt,
                     "icone": add_d_ic,
                     "data_hora_adicionado": data_agora,
+                    "autor": quem_enviou,
                 }
             )
             salvar_json(FILE_DATAS, datas)
             st.success("Nova data especial adicionada!")
             st.rerun()
+
+    # HISTÓRICO DE DATAS
+    st.markdown("---")
+    with st.expander("📜 Histórico de Datas Especiais", expanded=False):
+        for item_d in datas:
+            st.markdown(
+                f"""
+                <div class="card-historico">
+                    <b>{item_d.get('icone', '🗓️')} {item_d.get('titulo')}</b> - {item_d.get('data')}<br>
+                    <small>👤 Por: {item_d.get('autor', 'Nós')} | 🕒 {item_d.get('data_hora_adicionado', 'Início')}</small>
+                </div>
+            """,
+                unsafe_allow_html=True,
+            )
 
 # =============================================================
 # ABA 6: COMIDAS (RECEITAS EM CASA PRIMEIRO)
@@ -924,7 +991,6 @@ with tab_comidas:
 
     comidas = carregar_json(FILE_COMIDAS, DEFAULT_COMIDAS)
 
-    # INVERTIDA A ORDEM DAS ABAS: RECEITAS EM CASA PRIMEIRO
     subtab1, subtab2 = st.tabs(["Receitas em Casa", "Restaurantes / Entregas"])
 
     with subtab1:
@@ -975,7 +1041,7 @@ with tab_comidas:
                         salvar_json(FILE_COMIDAS, comidas)
                         st.rerun()
 
-    # CAIXINHA DE SUGESTÃO DE COMIDA COM DATA E HORA
+    # CAIXINHA DE SUGESTÃO DE COMIDA
     st.markdown("---")
     st.subheader("✍️ Deixe sua sugestão de comida/restaurante:")
     tipo_comida_sug = st.radio(
@@ -998,19 +1064,52 @@ with tab_comidas:
                 else "Vitória"
             )
             data_agora = datetime.now().strftime("%d/%m/%Y às %H:%M")
+            cat_nome = (
+                "Receita em Casa"
+                if "Receita" in tipo_comida_sug
+                else "Restaurante"
+            )
+
+            texto_item = f"{sugestao_comida} (Sugerido por {quem_enviou} em {data_agora})"
 
             if "Receita" in tipo_comida_sug:
-                comidas["receitas"].append(
-                    f"{sugestao_comida} (Sugestão de {quem_enviou} em {data_agora})"
-                )
+                comidas["receitas"].append(texto_item)
             else:
-                comidas["restaurantes"].append(
-                    f"{sugestao_comida} (Sugestão de {quem_enviou} em {data_agora})"
-                )
+                comidas["restaurantes"].append(texto_item)
+
+            if "historico_sugestoes" not in comidas:
+                comidas["historico_sugestoes"] = []
+            comidas["historico_sugestoes"].insert(
+                0,
+                {
+                    "item": sugestao_comida,
+                    "categoria": cat_nome,
+                    "autor": quem_enviou,
+                    "data_hora": data_agora,
+                },
+            )
 
             salvar_json(FILE_COMIDAS, comidas)
             st.success("Sua sugestão de comida foi salva com sucesso! 💖")
             st.rerun()
+
+    # HISTÓRICO DE SUGESTÕES DE COMIDAS
+    st.markdown("---")
+    with st.expander("📜 Histórico de Sugestões de Comidas", expanded=False):
+        hist_c = comidas.get("historico_sugestoes", [])
+        if not hist_c:
+            st.write("Ainda não há histórico de sugestões enviadas.")
+        else:
+            for item_hc in hist_c:
+                st.markdown(
+                    f"""
+                    <div class="card-historico">
+                        <b>{item_hc.get('item')}</b> ({item_hc.get('categoria')})<br>
+                        <small>👤 Por: {item_hc.get('autor')} | 🕒 {item_hc.get('data_hora')}</small>
+                    </div>
+                """,
+                    unsafe_allow_html=True,
+                )
 
 # =============================================================
 # ABA 7: ENCONTROS (DATES COM REGISTRO DE DATA/HORA)
@@ -1091,6 +1190,7 @@ with tab_dates:
                 else "Vitória"
             )
             data_agora = datetime.now().strftime("%d/%m/%Y às %H:%M")
+            cat_nome = "Em Casa" if "Casa" in tipo_date_sug else "Fora de Casa"
             texto_formatado = (
                 f"{sugestao_date} (Sugerido por {quem_enviou} em {data_agora})"
             )
@@ -1100,6 +1200,36 @@ with tab_dates:
             else:
                 dates["rua"].append(texto_formatado)
 
+            if "historico_sugestoes" not in dates:
+                dates["historico_sugestoes"] = []
+            dates["historico_sugestoes"].insert(
+                0,
+                {
+                    "item": sugestao_date,
+                    "categoria": cat_nome,
+                    "autor": quem_enviou,
+                    "data_hora": data_agora,
+                },
+            )
+
             salvar_json(FILE_DATES, dates)
             st.success("Sua sugestão de date foi enviada com sucesso! 💖")
             st.rerun()
+
+    # HISTÓRICO DE SUGESTÕES DE DATES
+    st.markdown("---")
+    with st.expander("📜 Histórico de Sugestões de Encontros", expanded=False):
+        hist_d = dates.get("historico_sugestoes", [])
+        if not hist_d:
+            st.write("Ainda não há histórico de sugestões enviadas.")
+        else:
+            for item_hd in hist_d:
+                st.markdown(
+                    f"""
+                    <div class="card-historico">
+                        <b>{item_hd.get('item')}</b> ({item_hd.get('categoria')})<br>
+                        <small>👤 Por: {item_hd.get('autor')} | 🕒 {item_hd.get('data_hora')}</small>
+                    </div>
+                """,
+                    unsafe_allow_html=True,
+                )
