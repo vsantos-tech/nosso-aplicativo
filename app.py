@@ -14,7 +14,7 @@ if not os.path.exists(UPLOADS_DIR):
 
 
 # -------------------------------------------------------------
-# IMAGEM DE FUNDO E ESTILIZAÇÃO (CORRIGIDA PARA CELULAR)
+# IMAGEM DE FUNDO E REMOÇÃO TOTAL DA BARRA PRETA DO TOPO
 # -------------------------------------------------------------
 def carregar_estilo_fundo():
     bg_image_path = None
@@ -33,7 +33,18 @@ def carregar_estilo_fundo():
     st.markdown(
         f"""
         <style>
-        /* MANTÉM O BOTÃO DA SIDEBAR VISÍVEL NO CELULAR E OCULTA LOGOS DESNECESSÁRIOS */
+        /* OCULTA TOTALMENTE A BARRA PRETA DO TOPO (GITHUB / FORK / STREAMLIT) */
+        header, 
+        [data-testid="stHeader"], 
+        [data-testid="stAppToolbar"], 
+        [data-testid="stHeaderActionElements"],
+        div[class*="stAppHeader"], 
+        div[class*="stAppToolbar"] {{
+            display: none !important;
+            visibility: hidden !important;
+            height: 0px !important;
+        }}
+        
         #MainMenu {{visibility: hidden !important;}}
         footer {{visibility: hidden !important;}}
         [data-testid="stDecoration"] {{display: none !important;}}
@@ -44,6 +55,8 @@ def carregar_estilo_fundo():
             background-position: center;
             background-repeat: no-repeat;
             background-attachment: fixed;
+            margin-top: 0px !important;
+            padding-top: 0px !important;
         }}
         
         [data-testid="stSidebar"] {{
@@ -231,7 +244,6 @@ if "e_admin" not in st.session_state:
 
 SENHA_CORRETA = "1234"
 
-# Acesso ao Modo Edição direto na tela ou na barra lateral (Exclusivo Vitória)
 if st.session_state.usuario_atual == "vitoria":
     with st.expander("🔑 Acessar Modo Edição (Exclusivo Vitória)", expanded=st.session_state.e_admin):
         if not st.session_state.e_admin:
