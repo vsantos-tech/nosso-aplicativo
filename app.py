@@ -27,7 +27,7 @@ def carregar_imagem_correta(caminho_imagem):
 
 
 # -------------------------------------------------------------
-# IMAGEM DE FUNDO E REMOÇÃO DE BARRAS (SEM QUEBRAR O HTML)
+# IMAGEM DE FUNDO E ÍCONE DO IOS (COM icone.jpg)
 # -------------------------------------------------------------
 def carregar_estilo_fundo():
     bg_image_path = None
@@ -82,7 +82,6 @@ def carregar_estilo_fundo():
             font-weight: 500;
         }}
         
-        /* ESTILO COMPACTO DAS ABAS */
         div[data-baseweb="tab-list"] {{
             gap: 2px !important;
             display: flex !important;
@@ -136,6 +135,19 @@ def carregar_estilo_fundo():
         </style>
     """
     st.markdown(css, unsafe_allow_html=True)
+
+    # Injeta a tag do ícone icone.jpg para o iOS via HTML
+    st.components.v1.html(
+        """
+        <script>
+            var link = parent.document.createElement('link');
+            link.rel = 'apple-touch-icon';
+            link.href = 'app/static/icone.jpg';
+            parent.document.getElementsByTagName('head')[0].appendChild(link);
+        </script>
+        """,
+        height=0,
+    )
 
 
 carregar_estilo_fundo()
