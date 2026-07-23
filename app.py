@@ -52,7 +52,7 @@ def carregar_estilo_fundo():
             bin_str = base64.b64encode(f.read()).decode()
         bg_style = f'background-image: url("data:image/png;base64,{bin_str}");'
     else:
-        bg_style = "background: linear-gradient(135deg, #FFD1DC 0%, #FFB07C 50%, #E65C83 100%);"
+        bg_style = "background: transparent;"
 
     css = f"""
         <style>
@@ -73,22 +73,24 @@ def carregar_estilo_fundo():
             pointer-events: none !important;
         }}
 
-        /* PREENCHE A TELA INTEIRA SEM BORDAS OU ESPAÇAMENTOS ROSAS */
-        html, body, [data-testid="stAppViewContainer"], .stApp {{
+        /* STREAMLIT TOTALMENTE TRANSPARENTE E EXPANDIDO */
+        html, body, [data-testid="stAppViewContainer"], .stApp, [data-testid="stMain"] {{
             {bg_style}
             background-size: cover !important;
             background-position: center center !important;
             background-repeat: no-repeat !important;
             background-attachment: fixed !important;
+            background-color: transparent !important;
             width: 100vw !important;
             height: 100vh !important;
             min-height: 100vh !important;
             margin: 0 !important;
             padding: 0 !important;
+            border-radius: 0px !important;
         }}
 
         .block-container {{
-            padding-top: 0.5rem !important;
+            padding-top: 1rem !important;
             padding-bottom: 1rem !important;
             padding-left: 0.8rem !important;
             padding-right: 0.8rem !important;
