@@ -48,7 +48,7 @@ def carregar_imagem_correta(caminho_ou_url):
 
 
 # -------------------------------------------------------------
-# ESTILIZAÇÃO E EXPANSÃO TOTAL DA TELA
+# ESTILIZAÇÃO E EXPANSÃO TOTAL DA IMAGEM DE FUNDO
 # -------------------------------------------------------------
 def carregar_estilo_fundo():
     bg_image_path = None
@@ -66,36 +66,37 @@ def carregar_estilo_fundo():
 
     css = f"""
         <style>
-        /* 1. Esconde topo e rodapés nativos do Streamlit e Embed */
+        /* 1. Esconde topo e rodapés nativos do Streamlit */
         [data-testid="stHeader"], header, footer, [data-testid="stEmbedFooter"] {{
             display: none !important;
             visibility: hidden !important;
             height: 0px !important;
         }}
 
-        /* 2. Expande o fundo por 100% da tela */
+        /* 2. FORÇA A IMAGEM DE FUNDO A EXPANDIR POR TODA A TELA DO CELULAR */
         html, body, [data-testid="stAppViewContainer"], .stApp {{
             {bg_style}
             background-size: cover !important;
-            background-position: center !important;
+            background-position: center center !important;
             background-repeat: no-repeat !important;
             background-attachment: fixed !important;
+            width: 100vw !important;
+            height: 100vh !important;
             min-height: 100vh !important;
-            height: 100% !important;
             margin: 0 !important;
             padding: 0 !important;
         }}
 
-        /* 3. Ajusta o conteúdo para colar no topo */
+        /* 3. Preenchimento interno do conteúdo */
         .block-container {{
-            padding-top: 0.5rem !important;
+            padding-top: 1rem !important;
             padding-bottom: 2rem !important;
             padding-left: 1rem !important;
             padding-right: 1rem !important;
             max-width: 100% !important;
         }}
 
-        /* Oculta barras laterais e widgets desnecessários */
+        /* Oculta elementos adicionais de interface */
         [data-testid="stAppToolbar"], 
         [data-testid="stHeaderActionElements"],
         [data-testid="stStatusWidget"],
@@ -580,7 +581,7 @@ with tab_recado:
             if img_obj:
                 st.image(img_obj, use_container_width=True)
 
-        # MODO EDIÇÃO: BOTÃO DE EXCLUIR RECADO DO DIA
+        # EXCLUSÃO DO RECADO DO DIA NO MODO EDIÇÃO
         if e_admin:
             if st.button("🗑️ Excluir Recado do Dia", key="btn_del_recado_hoje"):
                 recados["hoje"] = ""
@@ -613,7 +614,7 @@ with tab_recado:
             if img_resp_obj:
                 st.image(img_resp_obj, width=250, caption="Foto da Larissa 🌸")
 
-    # PERFIL LARISSA: RESPOSTA COM REGISTRO DE DATA E HORA
+    # PERFIL LARISSA: RESPOSTA
     if st.session_state.usuario_atual == "larissa":
         st.markdown("---")
         st.markdown("### 👇 Resposta da Larissa:")
