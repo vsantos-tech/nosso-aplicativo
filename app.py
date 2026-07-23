@@ -298,20 +298,22 @@ if st.session_state.usuario_atual is None:
             st.rerun()
     st.stop()
 
-# CABEÇALHO: BOTÃO DE SETA PARA VOLTAR + BOTÃO TROCAR PERFIL IGUAL ANTES
-col_seta, col_perfil, col_trocar = st.columns([1, 3, 2])
-with col_seta:
-    if st.button("⬅️ Voltar", key="btn_seta_voltar"):
+# PERFIL E BOTÕES LADO A LADO (VOLTAR + TROCAR PERFIL)
+nome_exib = (
+    "☀️ Larissa"
+    if st.session_state.usuario_atual == "larissa"
+    else "🌙 Vitória"
+)
+st.write(f"Conectada como: **{nome_exib}**")
+
+col_btn1, col_btn2 = st.columns(2)
+with col_btn1:
+    if st.button("⬅️ Voltar", key="btn_seta_voltar", use_container_width=True):
+        st.session_state.usuario_atual = None
+        st.session_state.e_admin = False
         st.rerun()
-with col_perfil:
-    nome_exib = (
-        "☀️ Larissa"
-        if st.session_state.usuario_atual == "larissa"
-        else "🌙 Vitória"
-    )
-    st.write(f"Conectada: **{nome_exib}**")
-with col_trocar:
-    if st.button("🔄 Trocar perfil", key="btn_trocar_usr"):
+with col_btn2:
+    if st.button("🔄 Trocar perfil", key="btn_trocar_usr", use_container_width=True):
         st.session_state.usuario_atual = None
         st.session_state.e_admin = False
         st.rerun()
