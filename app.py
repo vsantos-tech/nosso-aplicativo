@@ -52,11 +52,11 @@ def carregar_estilo_fundo():
             bin_str = base64.b64encode(f.read()).decode()
         bg_style = f'background-image: url("data:image/png;base64,{bin_str}");'
     else:
-        bg_style = "background: transparent;"
+        bg_style = "background: linear-gradient(135deg, #FFD1DC 0%, #FFB07C 50%, #E65C83 100%);"
 
     css = f"""
         <style>
-        /* ZERA TOTALMENTE BARRA SUPERIOR, BARRA INFERIOR E BORDAS DO STREAMLIT */
+        /* REMOVE TOTALMENTE O RODAPÉ E BARRAS DO STREAMLIT */
         footer, 
         [data-testid="stFooter"],
         [data-testid="stEmbedFooter"],
@@ -70,27 +70,20 @@ def carregar_estilo_fundo():
             visibility: hidden !important;
             height: 0px !important;
             opacity: 0 !important;
+            pointer-events: none !important;
         }}
 
-        /* TORNA O STREAMLIT TRANSPARENTE E TOTALMENTE EXPANDIDO */
-        html, body, [data-testid="stAppViewContainer"], .stApp, section.main {{
+        html, body, [data-testid="stAppViewContainer"], .stApp {{
             {bg_style}
             background-size: cover !important;
-            background-position: center center !important;
+            background-position: center !important;
             background-repeat: no-repeat !important;
             background-attachment: fixed !important;
-            background-color: transparent !important;
-            width: 100vw !important;
-            height: 100% !important;
-            margin: 0 !important;
-            padding: 0 !important;
-            border: none !important;
-            border-radius: 0px !important;
         }}
 
         .block-container {{
             padding-top: 0.5rem !important;
-            padding-bottom: 1rem !important;
+            padding-bottom: 2rem !important;
             padding-left: 0.8rem !important;
             padding-right: 0.8rem !important;
             max-width: 100% !important;
