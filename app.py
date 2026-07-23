@@ -56,7 +56,7 @@ def carregar_estilo_fundo():
 
     css = f"""
         <style>
-        /* ELIMINA TOTALMENTE O RODAPÉ "BUILT WITH STREAMLIT" E BARRA DE STATUS */
+        /* ZERA TOTALMENTE BARRA SUPERIOR, BARRA INFERIOR E BORDAS DO STREAMLIT */
         footer, 
         [data-testid="stFooter"],
         [data-testid="stEmbedFooter"],
@@ -70,11 +70,10 @@ def carregar_estilo_fundo():
             visibility: hidden !important;
             height: 0px !important;
             opacity: 0 !important;
-            pointer-events: none !important;
         }}
 
-        /* STREAMLIT TOTALMENTE TRANSPARENTE E EXPANDIDO */
-        html, body, [data-testid="stAppViewContainer"], .stApp, [data-testid="stMain"] {{
+        /* TORNA O STREAMLIT TRANSPARENTE E TOTALMENTE EXPANDIDO */
+        html, body, [data-testid="stAppViewContainer"], .stApp, section.main {{
             {bg_style}
             background-size: cover !important;
             background-position: center center !important;
@@ -82,15 +81,15 @@ def carregar_estilo_fundo():
             background-attachment: fixed !important;
             background-color: transparent !important;
             width: 100vw !important;
-            height: 100vh !important;
-            min-height: 100vh !important;
+            height: 100% !important;
             margin: 0 !important;
             padding: 0 !important;
+            border: none !important;
             border-radius: 0px !important;
         }}
 
         .block-container {{
-            padding-top: 1rem !important;
+            padding-top: 0.5rem !important;
             padding-bottom: 1rem !important;
             padding-left: 0.8rem !important;
             padding-right: 0.8rem !important;
