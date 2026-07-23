@@ -56,7 +56,6 @@ def carregar_estilo_fundo():
 
     css = f"""
         <style>
-        /* REMOVE TOTALMENTE O RODAPÉ E BARRAS DO STREAMLIT */
         footer, 
         [data-testid="stFooter"],
         [data-testid="stEmbedFooter"],
@@ -167,7 +166,6 @@ def carregar_estilo_fundo():
             font-size: 13px;
         }}
 
-        /* ESTILO COMPACTO DAS MÚSICAS */
         .titulo-musica {{
             font-size: 16px !important;
             font-weight: bold !important;
@@ -285,9 +283,6 @@ if "usuario_atual" not in st.session_state:
 st.title("Nosso Aplicativo 💗")
 st.caption("Nosso cantinho especial de memórias, rotina e carinho.")
 
-# -------------------------------------------------------------
-# SELEÇÃO DE USUÁRIA OU BOTÃO VOLTAR
-# -------------------------------------------------------------
 if st.session_state.usuario_atual is None:
     st.markdown("---")
     st.subheader("✨ Quem é você?")
@@ -303,17 +298,20 @@ if st.session_state.usuario_atual is None:
             st.rerun()
     st.stop()
 
-# CABEÇALHO COM BOTÃO DE VOLTAR/TROCAR PERFIL
-col_topo1, col_topo2 = st.columns([2, 2])
-with col_topo1:
+# CABEÇALHO: BOTÃO DE SETA PARA VOLTAR + BOTÃO TROCAR PERFIL IGUAL ANTES
+col_seta, col_perfil, col_trocar = st.columns([1, 3, 2])
+with col_seta:
+    if st.button("⬅️ Voltar", key="btn_seta_voltar"):
+        st.rerun()
+with col_perfil:
     nome_exib = (
         "☀️ Larissa"
         if st.session_state.usuario_atual == "larissa"
         else "🌙 Vitória"
     )
-    st.write(f"Conectada como: **{nome_exib}**")
-with col_topo2:
-    if st.button("🏠 Voltar para a Tela Inicial / Trocar Perfil", key="btn_voltar_home", use_container_width=True):
+    st.write(f"Conectada: **{nome_exib}**")
+with col_trocar:
+    if st.button("🔄 Trocar perfil", key="btn_trocar_usr"):
         st.session_state.usuario_atual = None
         st.session_state.e_admin = False
         st.rerun()
@@ -356,9 +354,7 @@ e_admin = (
     else False
 )
 
-# -------------------------------------------------------------
-# NAVEGAÇÃO POR ABAS (RECADO EM 1º, SENTIMENTO EM 2º)
-# -------------------------------------------------------------
+# NAVEGAÇÃO POR ABAS (RECADO 1º, SENTIMENTO 2º)
 (
     tab_recado,
     tab_sentimento,
@@ -380,7 +376,7 @@ e_admin = (
 )
 
 # =============================================================
-# ABA 1: RECADO (AGORA PRIMEIRA ABA)
+# ABA 1: RECADO
 # =============================================================
 with tab_recado:
     st.header("☀️ Lembrete pro meu cheirinho")
@@ -601,7 +597,7 @@ with tab_recado:
                 )
 
 # =============================================================
-# ABA 2: SENTIMENTO (AGORA SEGUNDA ABA)
+# ABA 2: SENTIMENTO
 # =============================================================
 with tab_sentimento:
     st.header("💭 Como estamos nos sentindo hoje?")
@@ -752,7 +748,7 @@ with tab_sentimento:
                     st.rerun()
 
 # =============================================================
-# ABA 3: MÚSICAS (TÍTULOS MENORES E NEGRITO, ESPAÇO COMPACTO)
+# ABA 3: MÚSICAS (COM HISTÓRICO)
 # =============================================================
 with tab_musicas:
     st.header("🎶 Músicas Que Lembram Nós")
@@ -814,8 +810,21 @@ with tab_musicas:
             st.success("Música adicionada!")
             st.rerun()
 
+    st.markdown("---")
+    with st.expander("📜 Histórico de Músicas Adicionadas", expanded=False):
+        for idx_hm, item_m in enumerate(musicas):
+            st.markdown(
+                f"""
+                <div class="card-historico">
+                    <b>🎵 {item_m.get('nome')}</b><br>
+                    <small>👤 Por: {item_m.get('autor', 'Nós')} | 🕒 {item_m.get('data_hora', 'Início')}</small>
+                </div>
+            """,
+                unsafe_allow_html=True,
+            )
+
 # =============================================================
-# ABA 4: FOTOS (TAMANHO MÉDIO AJUSTADO)
+# ABA 4: FOTOS (COM HISTÓRICO)
 # =============================================================
 with tab_fotos:
     st.header("📸 Mural de Memórias")
@@ -897,8 +906,21 @@ with tab_fotos:
                 st.success("Nova foto adicionada!")
                 st.rerun()
 
+    st.markdown("---")
+    with st.expander("📜 Histórico de Fotos Adicionadas", expanded=False):
+        for item_f in fotos:
+            st.markdown(
+                f"""
+                <div class="card-historico">
+                    <b>📸 Legenda:</b> {item_f.get('legenda', 'Sem legenda')}<br>
+                    <small>🕒 Postada em: {item_f.get('data_hora', 'Início')}</small>
+                </div>
+            """,
+                unsafe_allow_html=True,
+            )
+
 # =============================================================
-# ABA 5: DATAS
+# ABA 5: DATAS (COM HISTÓRICO)
 # =============================================================
 with tab_datas:
     st.header("📅 Datas Especiais")
@@ -963,8 +985,21 @@ with tab_datas:
             st.success("Data adicionada!")
             st.rerun()
 
+    st.markdown("---")
+    with st.expander("📜 Histórico de Datas Especiais", expanded=False):
+        for item_d in datas:
+            st.markdown(
+                f"""
+                <div class="card-historico">
+                    <b>{item_d.get('icone', '🗓️')} {item_d.get('titulo')}</b> - {item_d.get('data')}<br>
+                    <small>👤 Por: {item_d.get('autor', 'Nós')} | 🕒 {item_d.get('data_hora_adicionado', 'Início')}</small>
+                </div>
+            """,
+                unsafe_allow_html=True,
+            )
+
 # =============================================================
-# ABA 6: COMIDAS
+# ABA 6: COMIDAS (COM HISTÓRICO)
 # =============================================================
 with tab_comidas:
     st.header("🍕 O Que Amamos Comer")
@@ -1026,17 +1061,50 @@ with tab_comidas:
                 if st.session_state.usuario_atual == "larissa"
                 else "Vitória"
             )
-            texto_item = f"{sugestao_comida} (Adicionado por {quem_enviou} em {formatar_data_hora()})"
+            cat_nome = "Receita em Casa" if "Receita" in tipo_comida_sug else "Restaurante"
+            data_agora = formatar_data_hora()
+            texto_item = f"{sugestao_comida} (Adicionado por {quem_enviou} em {data_agora})"
+            
             if "Receita" in tipo_comida_sug:
                 comidas["receitas"].append(texto_item)
             else:
                 comidas["restaurantes"].append(texto_item)
+
+            if "historico_sugestoes" not in comidas:
+                comidas["historico_sugestoes"] = []
+            comidas["historico_sugestoes"].insert(
+                0,
+                {
+                    "item": sugestao_comida,
+                    "categoria": cat_nome,
+                    "autor": quem_enviou,
+                    "data_hora": data_agora,
+                },
+            )
+
             salvar_json(FILE_COMIDAS, comidas)
             st.success("Salvo com sucesso!")
             st.rerun()
 
+    st.markdown("---")
+    with st.expander("📜 Histórico de Sugestões de Comidas", expanded=False):
+        hist_c = comidas.get("historico_sugestoes", [])
+        if not hist_c:
+            st.write("Ainda não há histórico de sugestões enviadas.")
+        else:
+            for item_hc in hist_c:
+                st.markdown(
+                    f"""
+                    <div class="card-historico">
+                        <b>{item_hc.get('item')}</b> ({item_hc.get('categoria')})<br>
+                        <small>👤 Por: {item_hc.get('autor')} | 🕒 {item_hc.get('data_hora')}</small>
+                    </div>
+                """,
+                    unsafe_allow_html=True,
+                )
+
 # =============================================================
-# ABA 7: ENCONTROS (DATES)
+# ABA 7: ENCONTROS / DATES (COM HISTÓRICO)
 # =============================================================
 with tab_dates:
     st.header("🥂 Nossos Encontros (Feitos & A Fazer)")
@@ -1097,11 +1165,44 @@ with tab_dates:
                 if st.session_state.usuario_atual == "larissa"
                 else "Vitória"
             )
-            texto_formatado = f"{sugestao_date} (Adicionado por {quem_enviou} em {formatar_data_hora()})"
+            cat_nome = "Em Casa" if "Casa" in tipo_date_sug else "Fora de Casa"
+            data_agora = formatar_data_hora()
+            texto_formatado = f"{sugestao_date} (Adicionado por {quem_enviou} em {data_agora})"
+            
             if "Casa" in tipo_date_sug:
                 dates["casa"].append(texto_formatado)
             else:
                 dates["rua"].append(texto_formatado)
+
+            if "historico_sugestoes" not in dates:
+                dates["historico_sugestoes"] = []
+            dates["historico_sugestoes"].insert(
+                0,
+                {
+                    "item": sugestao_date,
+                    "categoria": cat_nome,
+                    "autor": quem_enviou,
+                    "data_hora": data_agora,
+                },
+            )
+
             salvar_json(FILE_DATES, dates)
             st.success("Date adicionado com sucesso!")
             st.rerun()
+
+    st.markdown("---")
+    with st.expander("📜 Histórico de Sugestões de Encontros", expanded=False):
+        hist_d = dates.get("historico_sugestoes", [])
+        if not hist_d:
+            st.write("Ainda não há histórico de sugestões enviadas.")
+        else:
+            for item_hd in hist_d:
+                st.markdown(
+                    f"""
+                    <div class="card-historico">
+                        <b>{item_hd.get('item')}</b> ({item_hd.get('categoria')})<br>
+                        <small>👤 Por: {item_hd.get('autor')} | 🕒 {item_hd.get('data_hora')}</small>
+                    </div>
+                """,
+                    unsafe_allow_html=True,
+                )
