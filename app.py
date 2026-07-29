@@ -1,5 +1,247 @@
+import base64
+import os
+from datetime import datetime, timedelta, timezone
+from PIL import Image, ImageOps
+import streamlit as st
+import pandas as pd
+from streamlit_gsheets import GSheetsConnection
+
+st.set_page_config(
+    page_title="Nosso Aplicativo 💗", page_icon="💗", layout="wide"
+)
+
+# Evita o erro de tradução automática do Chrome quebrar a tela
+st.markdown('<meta name="google" content="notranslate">', unsafe_allow_html=True)
+
+# Conexão com a Planilha do Google Sheets
+conn = st.connection("gsheets", type=GSheetsConnection)
+
+UPLOADS_DIR = "uploads"
+if not os.path.exists(UPLOADS_DIR):
+    os.makedirs(UPLOADS_DIR)
+
+
+def obter_agora_brasilia():
+    fuso_brasilia = timezone(timedelta(hours=-3))
+    return datetime.now(fuso_brasilia)
+
+
+def formatar_data_hora():
+    return obter_agora_brasilia().strftime("%d/%m/%Y às %H:%M")
+
+
+def carregar_imagem_correta(caminho_ou_url):
+    if not caminho_ou_url:
+        return None
+    if str(caminho_ou_url).startswith(("http://", "https://", "data:image")):
+        return caminho_ou_url
+    try:
+        image = Image.open(caminho_ou_url)
+        image = ImageOps.exif_transpose(image)
+        return image
+    except Exception:
+        return caminho_ou_url
+
+
+def carregar_estilo_fundo():
+    bg_image_path = None
+    for ext in ["fundo.png", "fundo.jpg", "fundo.jpeg"]:
+        if os.path.exists(ext):
+            bg_image_path = ext
+            break
+
+    if bg_image_path:
+        with open(bg_image_path, "rb") as f:
+            bin_str = base64.b64encode(f.read()).decode()
+        bg_style = f'background-image: url("data:image/png;base64,{bin_str}");'
+    else:
+        bg_style = "background: linear-gradient(135deg, #FFD1DC 0%, #FFB07C 50%, #E65C83 100%);"
+
+    css = f"""
+        <style>
+        footer, [data-testid="stFooter"], [data-testid="stEmbedFooter"],
+        .stAppFooter, div[class*="stEmbedFooter"], div[class*="viewerBadge"],
+        .viewerBadge_container__1323f, [data-testid="stHeader"], header {{
+            display: none !important;
+            visibility: hidden !important;
+            height: 0px !important;
+            opacity: 0 !important;
+            pointer-events: none !important;
+        }}
+
+        html, body, [data-testid="stAppViewContainer"], .stApp {{
+            {bg_style}
+            background-size: cover !important;
+            background-position: center !important;
+            background-repeat: no-repeat !important;
+            background-attachment: fixed !important;
+        }}
+
+        .block-container {{
+            padding-top: 0.5rem !important;
+            padding-bottom: 2rem !important;
+            padding-left: 0.8rem !important;
+            padding-right: 0.8rem !important;
+            max-width: 100% !important;
+        }}
+
+        [data-testid="stAppToolbar"], [data-testid="stHeaderActionElements"],
+        [data-testid="stStatusWidget"], [data-testid="stDecoration"], #MainMenu {{
+            display: none !important;
+            visibility: hidden !important;
+        }}
+        
+        [data-testid="stSidebar"] {{
+            background-color: rgba(255, 240, 243, 0.98) !important;
+        }}
+        
+        h1, h2, h3, p, label, .stMarkdown, span, div {{
+            color: #4A1228 !important;
+            font-weight: 500;
+        }}
+
+        textarea, input[type="text"], input[type="password"], 
+        div[data-baseweb="input"], div[data-baseweb="textarea"], 
+        [data-testid="stFileUploader"] > div {{
+            background-color: rgba(255, 240, 243, 0.95) !important;
+            color: #4A1228 !important;
+            border: 1px solid #E65C83 !important;
+            border-radius: 10px !important;
+        }}
+
+        [data-testid="stFileUploader"] section {{
+            background-color: rgba(255, 240, 243, 0.95) !important;
+        }}
+        
+        div[data-baseweb="tab-list"] {{
+            gap: 2px !important;
+            display: flex !important;
+            justify-content: space-between !important;
+            width: 100% !important;
+        }}
+        
+        button[data-baseweb="tab"] {{
+            background-color: rgba(255, 255, 255, 0.85) !important;
+            color: #4A1228 !important;
+            font-weight: bold;
+            border-radius: 8px 8px 0px 0px;
+            padding: 6px 8px !important;
+            font-size: 12px !important;
+            flex-grow: 1 !important;
+            text-align: center !important;
+        }}
+        
+        button[aria-selected="true"] {{
+            border-bottom-color: #E65C83 !important;
+            color: #E65C83 !important;
+            background-color: rgba(255, 255, 255, 0.98) !important;
+        }}
+        
+        div.stAlert {{
+            background: linear-gradient(90deg, #E65C83 0%, #FF8A65 100%);
+            color: white !important;
+            border: none;
+            border-radius: 15px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        }}
+
+        div.stAlert * {{
+            color: white !important;
+        }}
+
+        .stButton>button {{
+            background: linear-gradient(90deg, #E65C83 0%, #F07865 100%);
+            color: white !important;
+            border-radius: 10px;
+            border: none;
+            font-weight: bold;
+            padding: 8px 16px;
+        }}
+        
+        .card-historico {{
+            background-color: rgba(255, 255, 255, 0.9);
+            border-radius: 10px;
+            padding: 12px;
+            margin-bottom: 10px;
+            border-left: 4px solid #E65C83;
+            font-size: 13px;
+        }}
+        </style>
+    """
+    st.markdown(css, unsafe_allow_html=True)
+
+
+carregar_estilo_fundo()
+
+if "usuario_atual" not in st.session_state:
+    st.session_state.usuario_atual = None
+
+st.title("Nosso Aplicativo 💗")
+st.caption("Nosso cantinho especial de memórias, rotina e carinho.")
+
+if st.session_state.usuario_atual is None:
+    st.markdown("---")
+    st.subheader("✨ Quem é você?")
+    col_usr1, col_usr2 = st.columns(2)
+    with col_usr1:
+        if st.button("☀️ Larissa", key="btn_sou_larissa", use_container_width=True):
+            st.session_state.usuario_atual = "larissa"
+            st.session_state.e_admin = False
+            st.rerun()
+    with col_usr2:
+        if st.button("🌙 Vitória", key="btn_sou_vitoria", use_container_width=True):
+            st.session_state.usuario_atual = "vitoria"
+            st.rerun()
+    st.stop()
+
+# CABEÇALHO DO APP
+col_topo1, col_topo2, col_topo3 = st.columns([2, 1, 1])
+with col_topo1:
+    nome_exib = "☀️ Larissa" if st.session_state.usuario_atual == "larissa" else "🌙 Vitória"
+    st.write(f"Conectada como: **{nome_exib}**")
+
+with col_topo2:
+    if st.button("🔄 Atualizar", key="btn_refresh_app"):
+        st.cache_data.clear()
+        st.toast("Página e dados atualizados!")
+        st.rerun()
+
+with col_topo3:
+    if st.button("👤 Trocar perfil", key="btn_trocar_usr"):
+        st.session_state.usuario_atual = None
+        st.session_state.e_admin = False
+        st.rerun()
+
+if "e_admin" not in st.session_state:
+    st.session_state.e_admin = False
+
+SENHA_CORRETA = "1234"
+
+if st.session_state.usuario_atual == "vitoria":
+    with st.expander("🔑 Modo Edição (Vitória)", expanded=st.session_state.e_admin):
+        if not st.session_state.e_admin:
+            senha_input = st.text_input("Senha:", type="password", key="pwd_input_main")
+            if st.button("Entrar no Modo Edição", key="btn_login_admin_main"):
+                if senha_input == SENHA_CORRETA:
+                    st.session_state.e_admin = True
+                    st.success("Modo Edição Ativo!")
+                    st.rerun()
+                else:
+                    st.error("Senha incorreta!")
+        else:
+            st.success("✨ Modo Edição Ativo!")
+            if st.button("🚪 SALVAR E SAIR DO MODO EDIÇÃO", key="btn_sair_admin_main"):
+                st.session_state.e_admin = False
+                st.rerun()
+
+e_admin = st.session_state.e_admin if st.session_state.usuario_atual == "vitoria" else False
+
+tab_recado, tab_sentimento, tab_musicas, tab_fotos, tab_datas, tab_comidas, tab_dates = st.tabs(
+    ["☀️ Recado", "💭 Sentimento", "🎶 Músicas", "📸 Fotos", "📅 Datas", "🍕 Comidas", "🥂 Encontros"]
+)
+
 # =============================================================
-# ABA 1: RECADO (COM UPLOAD DA GALERIA + GOOGLE SHEETS)
+# ABA 1: RECADO
 # =============================================================
 with tab_recado:
     if st.session_state.usuario_atual == "vitoria":
@@ -7,7 +249,6 @@ with tab_recado:
     else:
         st.header("✨ Recado para meu benzinho")
 
-    # Lê os recados salvos na aba "Recados" da planilha
     try:
         df_recados = conn.read(worksheet="Recados", ttl="0s")
     except Exception:
@@ -35,7 +276,6 @@ with tab_recado:
     quem_manda = "Vitória" if st.session_state.usuario_atual == "vitoria" else "Larissa"
     novo_recado_txt = st.text_area(f"Escreva seu lembrete ({quem_manda}):", key="input_lembrete_geral")
     
-    # OPÇÃO DE ANEXAR IMAGEM DA GALERIA OU POR LINK
     tab_img1, tab_img2 = st.tabs(["📁 Anexar da Galeria / Dispositivo", "🔗 Link da Imagem"])
     up_img_direto, url_img_direto = None, ""
     
@@ -47,7 +287,6 @@ with tab_recado:
     if st.button("💌 Publicar Lembrete", key="btn_pub_lembrete_geral"):
         imagem_para_salvar = ""
 
-        # Se enviou arquivo da galeria, converte para salvar na planilha
         if up_img_direto is not None:
             bytes_data = up_img_direto.getvalue()
             b64_str = base64.b64encode(bytes_data).decode()
@@ -95,7 +334,6 @@ with tab_recado:
                     unsafe_allow_html=True
                 )
                 
-                # Exibe a foto no histórico se houver
                 url_hist = row.get("Imagem_URL")
                 if pd.notna(url_hist) and str(url_hist).strip():
                     img_h = carregar_imagem_correta(url_hist)
@@ -113,3 +351,26 @@ with tab_recado:
                         st.cache_data.clear()
                         st.rerun()
                 st.markdown("<hr style='margin: 8px 0;'>", unsafe_allow_html=True)
+
+# =============================================================
+# DEMAIS ABAS
+# =============================================================
+with tab_sentimento:
+    st.header("💭 Como estamos nos sentindo hoje?")
+    st.info("Suas seleções e sentimentos ficam gravados direto na sua planilha do Google.")
+
+with tab_musicas:
+    st.header("🎶 Músicas Que Lembram Nós")
+    st.write("Lista mantida em tempo real via Google Sheets.")
+
+with tab_fotos:
+    st.header("📸 Mural de Memórias")
+
+with tab_datas:
+    st.header("📅 Datas Especiais")
+
+with tab_comidas:
+    st.header("🍕 O Que Amamos Comer")
+
+with tab_dates:
+    st.header("🥂 Nossos Encontros (Feitos & A Fazer)")
