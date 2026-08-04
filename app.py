@@ -33,12 +33,8 @@ def carregar_estilo_fundo():
             background-attachment: fixed !important;
         }}
         
-        /* Força a cor do texto geral para escuro */
-        h1, h2, h3, p, span, div {{ 
-            color: #4A1228 !important; 
-        }}
+        h1, h2, h3, p, span, div {{ color: #4A1228 !important; }}
         
-        /* Correção para não misturar a cor da fonte nas caixas de digitação */
         .stTextInput input, .stTextArea textarea, div[data-baseweb="select"] {{
             color: #4A1228 !important;
             background-color: #FFFFFF !important;
@@ -54,7 +50,6 @@ def carregar_estilo_fundo():
             font-weight: bold; 
         }}
         
-        /* Estilo dos Cards (Destaque e Histórico) */
         .historico-card, .destaque-card {{ 
             background-color: rgba(255, 255, 255, 0.95); 
             padding: 15px; 
@@ -62,14 +57,9 @@ def carregar_estilo_fundo():
             margin-bottom: 10px; 
             box-shadow: 0 2px 5px rgba(0,0,0,0.1); 
         }}
-        .historico-card {{
-            border-left: 5px solid #E65C83; 
-        }}
-        .destaque-card {{
-            border-left: 5px solid #FFD700; /* Dourado apenas para o destaque de hoje */
-        }}
+        .historico-card {{ border-left: 5px solid #E65C83; }}
+        .destaque-card {{ border-left: 5px solid #FFD700; }}
         
-        /* Garante que o texto dentro das caixas seja escuro */
         .historico-card b, .historico-card p, .historico-card small, .historico-card a,
         .destaque-card b, .destaque-card p, .destaque-card small, .destaque-card a {{
             color: #4A1228 !important;
@@ -93,7 +83,6 @@ def obter_data_hoje():
 def processar_imagem(uploaded_file):
     if uploaded_file is not None:
         img = Image.open(uploaded_file)
-        # Corrige a foto de cabeça para baixo puxada da galeria (iPhone/Android)
         img = ImageOps.exif_transpose(img) 
         img.thumbnail((600, 600))
         buffered = io.BytesIO()
@@ -177,7 +166,7 @@ hoje = obter_data_hoje()
 # 6. AS 7 ABAS
 t1, t2, t3, t4, t5, t6, t7 = st.tabs(["💌 Recados", "💭 Sentimentos", "🎵 Músicas", "📸 Fotos", "📅 Datas", "🍕 Comidas", "🥂 Dates"])
 
-# --- ABA 1: RECADOS (Com divisão de Destaques de Hoje e Histórico) ---
+# --- ABA 1: RECADOS ---
 with t1:
     st.header("💌 Mural de Recados")
     texto_recado = st.text_area("Escreva seu recado:")
@@ -200,47 +189,45 @@ with t1:
     tem_hoje = False
     tem_historico = False
     
-    # Renderiza Destaques de Hoje
     for i, item in enumerate(st.session_state.dados["recados"]):
-        if item['data'].startswith(hoje):
-            if not tem_hoje:
-                st.subheader("🌟 Destaques de Hoje")
-                tem_hoje = True
-            st.markdown(f"""
-            <div class="destaque-card">
-                <b>{item['autor']}</b> - <small>{item['data']}</small><br>
-                <p style="margin-top: 10px;">{item['texto']}</p>
-            </div>
-            """, unsafe_allow_html=True)
-            if item.get('foto'):
-                st.image(item['foto'], use_container_width=True)
-            if e_admin and st.button("🗑️ Excluir", key=f"del_recados_hoje_{i}"):
-                deletar_item("recados", i)
-    
-    if tem_hoje:
-        st.divider()
-    
-    # Renderiza Histórico
-    for i, item in enumerate(st.session_state.dados["recados"]):
-        if not item['data'].startswith(hoje):
-            if not tem_historico:
-                st.subheader("📜 Histórico")
-                tem_historico = True
-            st.markdown(f"""
-            <div class="historico-card">
-                <b>{item['autor']}</b> - <small>{item['data']}</small><br>
-                <p style="margin-top: 10px;">{item['texto']}</p>
-            </div>
-            """, unsafe_allow_html=True)
-            if item.get('foto'):
-                st.image(item['foto'], use_container_width=True)
-            if e_admin and st.button("🗑️ Excluir", key=f"del_recados_hist_{i}"):
-                deletar_item("recados", i)
+        is_hoje = item['data'].startswith(hoje)
+        
+        if is_hoje and not tem_hoje:
+            st.subheader("🌟 Destaques de Hoje")
+            tem_hoje = True
+        elif not is_hoje and not tem_historico:
+            if tem_hoje: st.divider()
+            st.subheader("📜 Histórico")
+            tem_historico = True
+            
+        css_class = "destaque-card" if is_hoje else "historico-card"
+        st.markdown(f"""
+        <div class="{css_class}">
+            <b>{item['autor']}</b> - <small>{item['data']}</small><br>
+            <p style="margin-top: 10px;">{item['texto']}</p>
+        </div>
+        """, unsafe_allow_html=True)
+        
+        if item.get('foto'):
+            st.image(item['foto'], use_container_width=True)
+            
+        if e_admin:
+            c1, c2 = st.columns(2)
+            with c1:
+                if st.button("🗑️ Excluir", key=f"del_rec_{i}"):
+                    deletar_item("recados", i)
+            with c2:
+                with st.expander("✏️ Alterar"):
+                    novo_texto = st.text_area("Novo texto:", value=item['texto'], key=f"edit_rec_{i}")
+                    if st.button("Salvar", key=f"save_rec_{i}"):
+                        st.session_state.dados["recados"][i]['texto'] = novo_texto
+                        salvar_dados(st.session_state.dados)
+                        st.rerun()
                 
     if not tem_historico and not tem_hoje:
         st.write("Ainda não há recados.")
 
-# --- ABA 2: SENTIMENTOS (Visual Feed Limpo) ---
+# --- ABA 2: SENTIMENTOS ---
 with t2:
     st.header("💭 Como estamos hoje?")
     opcoes_sentimentos = ["Feliz 😊", "Ansiosa 😰", "Cansada 🥱", "Empolgada ✨", "Triste 😢", "Com Saudade ❤️", "Estressada 🤯"]
@@ -261,10 +248,20 @@ with t2:
     st.subheader("📜 Feed de Sentimentos")
     for i, sen in enumerate(st.session_state.dados["sentimentos"]):
         st.markdown(f"<div class='historico-card'><b>{sen['autor']}</b> se sentiu: <b>{sen['sentimentos']}</b> <br><small>Adicionado em {sen['data']}</small></div>", unsafe_allow_html=True)
-        if e_admin and st.button("🗑️ Excluir", key=f"del_sentimentos_{i}"):
-            deletar_item("sentimentos", i)
+        if e_admin:
+            c1, c2 = st.columns(2)
+            with c1:
+                if st.button("🗑️ Excluir", key=f"del_sen_{i}"):
+                    deletar_item("sentimentos", i)
+            with c2:
+                with st.expander("✏️ Alterar"):
+                    novo_sen = st.text_input("Editar sentimento:", value=sen['sentimentos'], key=f"edit_sen_{i}")
+                    if st.button("Salvar", key=f"save_sen_{i}"):
+                        st.session_state.dados["sentimentos"][i]['sentimentos'] = novo_sen
+                        salvar_dados(st.session_state.dados)
+                        st.rerun()
 
-# --- ABA 3: MÚSICAS (Visual Feed Limpo) ---
+# --- ABA 3: MÚSICAS ---
 with t3:
     st.header("🎵 Nossas Músicas")
     nome_musica = st.text_input("Nome da Música e Artista:")
@@ -287,10 +284,22 @@ with t3:
     for i, mus in enumerate(st.session_state.dados["musicas"]):
         link_str = f" - <a href='{mus['link']}' target='_blank'>Ouvir no Spotify</a>" if mus.get('link') else ""
         st.markdown(f"<div class='historico-card'>🎵 <b>{mus['nome']}</b>{link_str}<br><small>Adicionado por {mus['autor']} em {mus['data']}</small></div>", unsafe_allow_html=True)
-        if e_admin and st.button("🗑️ Excluir", key=f"del_musicas_{i}"):
-            deletar_item("musicas", i)
+        if e_admin:
+            c1, c2 = st.columns(2)
+            with c1:
+                if st.button("🗑️ Excluir", key=f"del_mus_{i}"):
+                    deletar_item("musicas", i)
+            with c2:
+                with st.expander("✏️ Alterar"):
+                    novo_nome = st.text_input("Nome:", value=mus['nome'], key=f"edit_mus_nome_{i}")
+                    novo_link = st.text_input("Link:", value=mus.get('link', ''), key=f"edit_mus_link_{i}")
+                    if st.button("Salvar", key=f"save_mus_{i}"):
+                        st.session_state.dados["musicas"][i]['nome'] = novo_nome
+                        st.session_state.dados["musicas"][i]['link'] = novo_link
+                        salvar_dados(st.session_state.dados)
+                        st.rerun()
 
-# --- ABA 4: FOTOS (Visual Feed Limpo) ---
+# --- ABA 4: FOTOS ---
 with t4:
     st.header("📸 Nosso Mural de Fotos")
     foto_mural = st.file_uploader("Escolha uma foto da galeria", type=["png", "jpg", "jpeg", "webp"], key="foto_mural")
@@ -314,10 +323,20 @@ with t4:
     for i, ft in enumerate(st.session_state.dados["fotos"]):
         st.markdown(f"<div class='historico-card'><b>{ft['legenda']}</b><br><small>Por {ft['autor']} em {ft['data']}</small></div>", unsafe_allow_html=True)
         st.image(ft['foto'], use_container_width=True)
-        if e_admin and st.button("🗑️ Excluir", key=f"del_fotos_{i}"):
-            deletar_item("fotos", i)
+        if e_admin:
+            c1, c2 = st.columns(2)
+            with c1:
+                if st.button("🗑️ Excluir", key=f"del_fot_{i}"):
+                    deletar_item("fotos", i)
+            with c2:
+                with st.expander("✏️ Alterar Legenda"):
+                    nova_legenda = st.text_input("Legenda:", value=ft['legenda'], key=f"edit_fot_{i}")
+                    if st.button("Salvar", key=f"save_fot_{i}"):
+                        st.session_state.dados["fotos"][i]['legenda'] = nova_legenda
+                        salvar_dados(st.session_state.dados)
+                        st.rerun()
 
-# --- ABA 5: DATAS (Visual Feed Limpo) ---
+# --- ABA 5: DATAS ---
 with t5:
     st.header("📅 Datas Importantes")
     nome_data = st.text_input("O que vamos comemorar/lembrar?")
@@ -339,10 +358,20 @@ with t5:
     st.subheader("📜 Datas Salvas")
     for i, dt in enumerate(st.session_state.dados["datas"]):
         st.markdown(f"<div class='historico-card'>📅 <b>{dt['titulo']}</b> no dia <b>{dt['dia']}</b><br><small>Adicionado por {dt['autor']} em {dt['data']}</small></div>", unsafe_allow_html=True)
-        if e_admin and st.button("🗑️ Excluir", key=f"del_datas_{i}"):
-            deletar_item("datas", i)
+        if e_admin:
+            c1, c2 = st.columns(2)
+            with c1:
+                if st.button("🗑️ Excluir", key=f"del_dat_{i}"):
+                    deletar_item("datas", i)
+            with c2:
+                with st.expander("✏️ Alterar"):
+                    novo_tit = st.text_input("Título:", value=dt['titulo'], key=f"edit_dat_{i}")
+                    if st.button("Salvar", key=f"save_dat_{i}"):
+                        st.session_state.dados["datas"][i]['titulo'] = novo_tit
+                        salvar_dados(st.session_state.dados)
+                        st.rerun()
 
-# --- ABA 6: COMIDAS (Visual Feed Limpo) ---
+# --- ABA 6: COMIDAS ---
 with t6:
     st.header("🍕 O que gostamos de comer")
     nome_comida = st.text_input("Nome da comida ou Restaurante:")
@@ -364,10 +393,22 @@ with t6:
     st.subheader("📜 Lista de Comidas")
     for i, cm in enumerate(st.session_state.dados["comidas"]):
         st.markdown(f"<div class='historico-card'>🍕 <b>{cm['nome']}</b> ({cm['tipo']})<br><small>Adicionado por {cm['autor']} em {cm['data']}</small></div>", unsafe_allow_html=True)
-        if e_admin and st.button("🗑️ Excluir", key=f"del_comidas_{i}"):
-            deletar_item("comidas", i)
+        if e_admin:
+            c1, c2 = st.columns(2)
+            with c1:
+                if st.button("🗑️ Excluir", key=f"del_com_{i}"):
+                    deletar_item("comidas", i)
+            with c2:
+                with st.expander("✏️ Alterar"):
+                    novo_nome = st.text_input("Nome:", value=cm['nome'], key=f"edit_com_nome_{i}")
+                    novo_tipo = st.text_input("Tipo (Casa/Fora):", value=cm['tipo'], key=f"edit_com_tipo_{i}")
+                    if st.button("Salvar", key=f"save_com_{i}"):
+                        st.session_state.dados["comidas"][i]['nome'] = novo_nome
+                        st.session_state.dados["comidas"][i]['tipo'] = novo_tipo
+                        salvar_dados(st.session_state.dados)
+                        st.rerun()
 
-# --- ABA 7: DATES (Visual Feed Limpo) ---
+# --- ABA 7: DATES ---
 with t7:
     st.header("🥂 Nossos Dates")
     ideia_date = st.text_input("Ideia de lugar ou date:")
@@ -389,5 +430,17 @@ with t7:
     st.subheader("📜 Nossa Lista de Dates")
     for i, dts in enumerate(st.session_state.dados["dates"]):
         st.markdown(f"<div class='historico-card'>🥂 <b>{dts['ideia']}</b> - {dts['status']}<br><small>Adicionado por {dts['autor']} em {dts['data']}</small></div>", unsafe_allow_html=True)
-        if e_admin and st.button("🗑️ Excluir", key=f"del_dates_{i}"):
-            deletar_item("dates", i)
+        if e_admin:
+            c1, c2 = st.columns(2)
+            with c1:
+                if st.button("🗑️ Excluir", key=f"del_date_{i}"):
+                    deletar_item("dates", i)
+            with c2:
+                with st.expander("✏️ Alterar"):
+                    nova_ideia = st.text_input("Ideia:", value=dts['ideia'], key=f"edit_date_ideia_{i}")
+                    novo_status = st.text_input("Status:", value=dts['status'], key=f"edit_date_status_{i}")
+                    if st.button("Salvar", key=f"save_date_{i}"):
+                        st.session_state.dados["dates"][i]['ideia'] = nova_ideia
+                        st.session_state.dados["dates"][i]['status'] = novo_status
+                        salvar_dados(st.session_state.dados)
+                        st.rerun()
