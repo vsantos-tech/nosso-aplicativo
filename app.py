@@ -5,20 +5,64 @@ from datetime import datetime, timedelta, timezone
 import base64
 from PIL import Image
 import io
+import os
 
-# 1. CONFIGURAÇÃO DA PÁGINA (Segura, não causa tela branca)
+# 1. CONFIGURAÇÃO DA PÁGINA E IMAGEM DE FUNDO
 st.set_page_config(page_title="Nosso Aplicativo 💗", page_icon="💗", layout="centered")
 
-# Estilo Rosa Suave e Seguro
-st.markdown("""
-    <style>
-    .stApp { background-color: #FFF0F5; }
-    h1, h2, h3, p { color: #800040; }
-    .stButton>button { background-color: #FF69B4; color: white; border-radius: 10px; border: none; font-weight: bold; }
-    div[data-testid="stExpander"] { background-color: white; border-radius: 10px; }
-    .historico-card { background-color: white; padding: 15px; border-radius: 10px; margin-bottom: 10px; border-left: 5px solid #FF69B4; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
-    </style>
-""", unsafe_allow_html=True)
+def carregar_estilo_fundo():
+    bg_image_path = None
+    # Procura se você tem a imagem de fundo salva no seu GitHub
+    for ext in ["fundo.png", "fundo.jpg", "fundo.jpeg"]:
+        if os.path.exists(ext):
+            bg_image_path = ext
+            break
+
+    if bg_image_path:
+        with open(bg_image_path, "rb") as f:
+            bin_str = base64.b64encode(f.read()).decode()
+        bg_style = f'background-image: url("data:image/png;base64,{bin_str}");'
+    else:
+        # Fundo rosa gradiente padrão caso não ache a imagem
+        bg_style = "background: linear-gradient(135deg, #FFD1DC 0%, #FFB07C 50%, #E65C83 100%);"
+
+    css = f"""
+        <style>
+        .stApp {{
+            {bg_style}
+            background-size: cover !important;
+            background-position: center !important;
+            background-attachment: fixed !important;
+        }}
+        h1, h2, h3, p {{ 
+            color: #4A1228 !important; 
+            font-weight: bold; 
+            text-shadow: 1px 1px 3px rgba(255,255,255,0.7); 
+        }}
+        .stButton>button {{ 
+            background: linear-gradient(90deg, #E65C83 0%, #F07865 100%); 
+            color: white !important; 
+            border-radius: 10px; 
+            border: none; 
+            font-weight: bold; 
+        }}
+        div[data-testid="stExpander"] {{ 
+            background-color: rgba(255, 255, 255, 0.85); 
+            border-radius: 10px; 
+        }}
+        .historico-card {{ 
+            background-color: rgba(255, 255, 255, 0.9); 
+            padding: 15px; 
+            border-radius: 10px; 
+            margin-bottom: 10px; 
+            border-left: 5px solid #FF69B4; 
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1); 
+        }}
+        </style>
+    """
+    st.markdown(css, unsafe_allow_html=True)
+
+carregar_estilo_fundo()
 
 # 2. FUNÇÕES DE DATA E IMAGEM
 def obter_data_hora():
@@ -28,7 +72,7 @@ def obter_data_hora():
 def processar_imagem(uploaded_file):
     if uploaded_file is not None:
         img = Image.open(uploaded_file)
-        img.thumbnail((600, 600)) # Reduz o tamanho para não travar o app
+        img.thumbnail((600, 600)) # Reduz o tamanho para o app não travar
         buffered = io.BytesIO()
         img.save(buffered, format="JPEG")
         img_str = base64.b64encode(buffered.getvalue()).decode()
@@ -47,7 +91,6 @@ def ler_dados():
         file_content = repo.get_contents("dados_app.json")
         return json.loads(file_content.decoded_content.decode())
     except Exception:
-        # Se o arquivo não existir, cria a estrutura vazia
         return {"recados": [], "sentimentos": [], "musicas": [], "fotos": [], "datas": [], "comidas": [], "dates": []}
 
 def salvar_dados(dados):
@@ -65,7 +108,6 @@ def salvar_dados(dados):
         st.error(f"Erro ao salvar: {e}")
         return False
 
-# Inicializa os dados na sessão
 if "dados" not in st.session_state:
     st.session_state.dados = ler_dados()
 
