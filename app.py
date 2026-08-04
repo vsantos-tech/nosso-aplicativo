@@ -176,7 +176,7 @@ hoje = obter_data_hoje()
 # 6. AS 7 ABAS
 t1, t2, t3, t4, t5, t6, t7 = st.tabs(["💌 Recados", "💭 Sentimentos", "🎵 Músicas", "📸 Fotos", "📅 Datas", "🍕 Comidas", "🥂 Dates"])
 
-# --- ABA 1: RECADOS (Com Destaque de Hoje + Histórico Completo) ---
+# --- ABA 1: RECADOS ---
 with t1:
     st.header("💌 Mural de Recados")
     texto_recado = st.text_area("Escreva seu recado:")
@@ -197,7 +197,7 @@ with t1:
     
     st.divider()
     
-    # 1. MOSTRA O DESTAQUE DE HOJE (Apenas os recados postados na data de hoje)
+    # 1. MOSTRA APENAS O DESTAQUE DE HOJE NA TELA PRINCIPAL
     recados_hoje = [item for item in st.session_state.dados["recados"] if item['data'].startswith(hoje)]
     if recados_hoje:
         st.subheader("🌟 Destaques de Hoje")
@@ -212,34 +212,34 @@ with t1:
                 st.image(item['foto'], use_container_width=True)
         st.divider()
 
-    # 2. HISTÓRICO COMPLETO (Guarda TODOS os recados permanentemente)
-    st.subheader("📜 Histórico de Recados")
-    if not st.session_state.dados["recados"]:
-        st.write("Ainda não há recados salvos.")
-    else:
-        for i, item in enumerate(st.session_state.dados["recados"]):
-            st.markdown(f"""
-            <div class="historico-card">
-                <b>{item['autor']}</b> - <small>{item['data']}</small><br>
-                <p style="margin-top: 10px;">{item['texto']}</p>
-            </div>
-            """, unsafe_allow_html=True)
-            
-            if item.get('foto'):
-                st.image(item['foto'], use_container_width=True)
+    # 2. HISTÓRICO COMPLETO EM UM BOTÃO EXPANSÍVEL (EXPANDER)
+    with st.expander("📜 Ver Histórico Completo de Recados", expanded=False):
+        if not st.session_state.dados["recados"]:
+            st.write("Ainda não há recados salvos.")
+        else:
+            for i, item in enumerate(st.session_state.dados["recados"]):
+                st.markdown(f"""
+                <div class="historico-card">
+                    <b>{item['autor']}</b> - <small>{item['data']}</small><br>
+                    <p style="margin-top: 10px;">{item['texto']}</p>
+                </div>
+                """, unsafe_allow_html=True)
                 
-            if e_admin:
-                c1, c2 = st.columns(2)
-                with c1:
-                    if st.button("🗑️ Excluir", key=f"del_rec_{i}"):
-                        deletar_item("recados", i)
-                with c2:
-                    with st.expander("✏️ Alterar"):
-                        novo_texto = st.text_area("Novo texto:", value=item['texto'], key=f"edit_rec_{i}")
-                        if st.button("Salvar", key=f"save_rec_{i}"):
-                            st.session_state.dados["recados"][i]['texto'] = novo_texto
-                            salvar_dados(st.session_state.dados)
-                            st.rerun()
+                if item.get('foto'):
+                    st.image(item['foto'], use_container_width=True)
+                    
+                if e_admin:
+                    c1, c2 = st.columns(2)
+                    with c1:
+                        if st.button("🗑️ Excluir", key=f"del_rec_{i}"):
+                            deletar_item("recados", i)
+                    with c2:
+                        with st.expander("✏️ Alterar"):
+                            novo_texto = st.text_area("Novo texto:", value=item['texto'], key=f"edit_rec_{i}")
+                            if st.button("Salvar", key=f"save_rec_{i}"):
+                                st.session_state.dados["recados"][i]['texto'] = novo_texto
+                                salvar_dados(st.session_state.dados)
+                                st.rerun()
 
 # --- ABA 2: SENTIMENTOS ---
 with t2:
