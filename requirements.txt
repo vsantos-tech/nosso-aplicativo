@@ -1,4 +1,3 @@
 streamlit
-pillow
-st-gsheets-connection
-pandas
+PyGithub
+Pillow
