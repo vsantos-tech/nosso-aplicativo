@@ -3,7 +3,7 @@ from github import Github
 import json
 from datetime import datetime, timedelta, timezone
 import base64
-from PIL import Image
+from PIL import Image, ImageOps
 import io
 import os
 
@@ -38,6 +38,14 @@ def carregar_estilo_fundo():
             color: #4A1228 !important; 
         }}
         
+        /* Correção para não misturar a cor da fonte nas caixas de digitação */
+        .stTextInput input, .stTextArea textarea, div[data-baseweb="select"] {{
+            color: #4A1228 !important;
+            background-color: #FFFFFF !important;
+            -webkit-text-fill-color: #4A1228 !important;
+            border-radius: 8px !important;
+        }}
+        
         .stButton>button {{ 
             background: linear-gradient(90deg, #E65C83 0%, #F07865 100%); 
             color: white !important; 
@@ -46,7 +54,7 @@ def carregar_estilo_fundo():
             font-weight: bold; 
         }}
         
-        /* Estilo dos Cards (Destaque e Histórico) com texto escuro garantido */
+        /* Estilo dos Cards (Destaque e Histórico) */
         .historico-card, .destaque-card {{ 
             background-color: rgba(255, 255, 255, 0.95); 
             padding: 15px; 
@@ -58,12 +66,12 @@ def carregar_estilo_fundo():
             border-left: 5px solid #E65C83; 
         }}
         .destaque-card {{
-            border-left: 5px solid #FFD700; /* Dourado para o destaque do dia */
+            border-left: 5px solid #FFD700; /* Dourado apenas para o destaque de hoje */
         }}
         
         /* Garante que o texto dentro das caixas seja escuro */
-        .historico-card b, .historico-card p, .historico-card small,
-        .destaque-card b, .destaque-card p, .destaque-card small {{
+        .historico-card b, .historico-card p, .historico-card small, .historico-card a,
+        .destaque-card b, .destaque-card p, .destaque-card small, .destaque-card a {{
             color: #4A1228 !important;
         }}
         </style>
@@ -85,6 +93,8 @@ def obter_data_hoje():
 def processar_imagem(uploaded_file):
     if uploaded_file is not None:
         img = Image.open(uploaded_file)
+        # Corrige a foto de cabeça para baixo puxada da galeria (iPhone/Android)
+        img = ImageOps.exif_transpose(img) 
         img.thumbnail((600, 600))
         buffered = io.BytesIO()
         img.save(buffered, format="JPEG")
@@ -167,44 +177,11 @@ hoje = obter_data_hoje()
 # 6. AS 7 ABAS
 t1, t2, t3, t4, t5, t6, t7 = st.tabs(["💌 Recados", "💭 Sentimentos", "🎵 Músicas", "📸 Fotos", "📅 Datas", "🍕 Comidas", "🥂 Dates"])
 
-# --- FUNÇÃO AUXILIAR PARA RENDERIZAR ITENS ---
-def renderizar_itens(categoria, render_func):
-    tem_hoje = False
-    tem_historico = False
-    
-    # Renderiza Destaques de Hoje
-    for i, item in enumerate(st.session_state.dados[categoria]):
-        if item['data'].startswith(hoje):
-            if not tem_hoje:
-                st.subheader("🌟 Destaques de Hoje")
-                tem_hoje = True
-            render_func(item, "destaque-card")
-            if e_admin:
-                if st.button("🗑️ Excluir", key=f"del_{categoria}_hoje_{i}"):
-                    deletar_item(categoria, i)
-    
-    st.divider()
-    
-    # Renderiza Histórico (Antes de Hoje)
-    for i, item in enumerate(st.session_state.dados[categoria]):
-        if not item['data'].startswith(hoje):
-            if not tem_historico:
-                st.subheader("📜 Histórico")
-                tem_historico = True
-            render_func(item, "historico-card")
-            if e_admin:
-                if st.button("🗑️ Excluir", key=f"del_{categoria}_hist_{i}"):
-                    deletar_item(categoria, i)
-                    
-    if not tem_historico:
-        st.write("O histórico está vazio.")
-
-
-# --- ABA 1: RECADOS ---
+# --- ABA 1: RECADOS (Com divisão de Destaques de Hoje e Histórico) ---
 with t1:
     st.header("💌 Mural de Recados")
     texto_recado = st.text_area("Escreva seu recado:")
-    foto_recado = st.file_uploader("Anexar foto (opcional)", type=["png", "jpg", "jpeg"], key="up_recado")
+    foto_recado = st.file_uploader("Anexar foto (opcional)", type=["png", "jpg", "jpeg", "webp"], key="up_recado")
     
     if st.button("Publicar Recado"):
         if texto_recado or foto_recado:
@@ -220,20 +197,50 @@ with t1:
                 st.rerun()
     
     st.divider()
-    def render_recado(rec, css_class):
-        st.markdown(f"""
-        <div class="{css_class}">
-            <b>{rec['autor']}</b> - <small>{rec['data']}</small><br>
-            <p style="margin-top: 10px;">{rec['texto']}</p>
-        </div>
-        """, unsafe_allow_html=True)
-        if rec.get('foto'):
-            st.image(rec['foto'], use_container_width=True)
-            
-    renderizar_itens("recados", render_recado)
+    tem_hoje = False
+    tem_historico = False
+    
+    # Renderiza Destaques de Hoje
+    for i, item in enumerate(st.session_state.dados["recados"]):
+        if item['data'].startswith(hoje):
+            if not tem_hoje:
+                st.subheader("🌟 Destaques de Hoje")
+                tem_hoje = True
+            st.markdown(f"""
+            <div class="destaque-card">
+                <b>{item['autor']}</b> - <small>{item['data']}</small><br>
+                <p style="margin-top: 10px;">{item['texto']}</p>
+            </div>
+            """, unsafe_allow_html=True)
+            if item.get('foto'):
+                st.image(item['foto'], use_container_width=True)
+            if e_admin and st.button("🗑️ Excluir", key=f"del_recados_hoje_{i}"):
+                deletar_item("recados", i)
+    
+    if tem_hoje:
+        st.divider()
+    
+    # Renderiza Histórico
+    for i, item in enumerate(st.session_state.dados["recados"]):
+        if not item['data'].startswith(hoje):
+            if not tem_historico:
+                st.subheader("📜 Histórico")
+                tem_historico = True
+            st.markdown(f"""
+            <div class="historico-card">
+                <b>{item['autor']}</b> - <small>{item['data']}</small><br>
+                <p style="margin-top: 10px;">{item['texto']}</p>
+            </div>
+            """, unsafe_allow_html=True)
+            if item.get('foto'):
+                st.image(item['foto'], use_container_width=True)
+            if e_admin and st.button("🗑️ Excluir", key=f"del_recados_hist_{i}"):
+                deletar_item("recados", i)
+                
+    if not tem_historico and not tem_hoje:
+        st.write("Ainda não há recados.")
 
-
-# --- ABA 2: SENTIMENTOS ---
+# --- ABA 2: SENTIMENTOS (Visual Feed Limpo) ---
 with t2:
     st.header("💭 Como estamos hoje?")
     opcoes_sentimentos = ["Feliz 😊", "Ansiosa 😰", "Cansada 🥱", "Empolgada ✨", "Triste 😢", "Com Saudade ❤️", "Estressada 🤯"]
@@ -251,13 +258,13 @@ with t2:
                 st.rerun()
 
     st.divider()
-    def render_sentimento(sen, css_class):
-        st.markdown(f"<div class='{css_class}'><b>{sen['autor']}</b> se sentiu: <b>{sen['sentimentos']}</b> <br><small>{sen['data']}</small></div>", unsafe_allow_html=True)
-        
-    renderizar_itens("sentimentos", render_sentimento)
+    st.subheader("📜 Feed de Sentimentos")
+    for i, sen in enumerate(st.session_state.dados["sentimentos"]):
+        st.markdown(f"<div class='historico-card'><b>{sen['autor']}</b> se sentiu: <b>{sen['sentimentos']}</b> <br><small>Adicionado em {sen['data']}</small></div>", unsafe_allow_html=True)
+        if e_admin and st.button("🗑️ Excluir", key=f"del_sentimentos_{i}"):
+            deletar_item("sentimentos", i)
 
-
-# --- ABA 3: MÚSICAS ---
+# --- ABA 3: MÚSICAS (Visual Feed Limpo) ---
 with t3:
     st.header("🎵 Nossas Músicas")
     nome_musica = st.text_input("Nome da Música e Artista:")
@@ -276,17 +283,17 @@ with t3:
                 st.rerun()
 
     st.divider()
-    def render_musica(mus, css_class):
+    st.subheader("📜 Músicas Adicionadas")
+    for i, mus in enumerate(st.session_state.dados["musicas"]):
         link_str = f" - <a href='{mus['link']}' target='_blank'>Ouvir no Spotify</a>" if mus.get('link') else ""
-        st.markdown(f"<div class='{css_class}'>🎵 <b>{mus['nome']}</b>{link_str}<br><small>Adicionado por {mus['autor']} em {mus['data']}</small></div>", unsafe_allow_html=True)
-        
-    renderizar_itens("musicas", render_musica)
+        st.markdown(f"<div class='historico-card'>🎵 <b>{mus['nome']}</b>{link_str}<br><small>Adicionado por {mus['autor']} em {mus['data']}</small></div>", unsafe_allow_html=True)
+        if e_admin and st.button("🗑️ Excluir", key=f"del_musicas_{i}"):
+            deletar_item("musicas", i)
 
-
-# --- ABA 4: FOTOS ---
+# --- ABA 4: FOTOS (Visual Feed Limpo) ---
 with t4:
     st.header("📸 Nosso Mural de Fotos")
-    foto_mural = st.file_uploader("Escolha uma foto da galeria", type=["png", "jpg", "jpeg"], key="foto_mural")
+    foto_mural = st.file_uploader("Escolha uma foto da galeria", type=["png", "jpg", "jpeg", "webp"], key="foto_mural")
     legenda = st.text_input("Legenda da foto:")
     
     if st.button("Adicionar ao Mural"):
@@ -303,14 +310,14 @@ with t4:
                 st.rerun()
 
     st.divider()
-    def render_foto(ft, css_class):
-        st.markdown(f"<div class='{css_class}'><b>{ft['legenda']}</b><br><small>Por {ft['autor']} em {ft['data']}</small></div>", unsafe_allow_html=True)
+    st.subheader("📜 Álbum")
+    for i, ft in enumerate(st.session_state.dados["fotos"]):
+        st.markdown(f"<div class='historico-card'><b>{ft['legenda']}</b><br><small>Por {ft['autor']} em {ft['data']}</small></div>", unsafe_allow_html=True)
         st.image(ft['foto'], use_container_width=True)
-        
-    renderizar_itens("fotos", render_foto)
+        if e_admin and st.button("🗑️ Excluir", key=f"del_fotos_{i}"):
+            deletar_item("fotos", i)
 
-
-# --- ABA 5: DATAS ---
+# --- ABA 5: DATAS (Visual Feed Limpo) ---
 with t5:
     st.header("📅 Datas Importantes")
     nome_data = st.text_input("O que vamos comemorar/lembrar?")
@@ -322,20 +329,20 @@ with t5:
                 "autor": st.session_state.usuario_atual,
                 "titulo": nome_data,
                 "dia": dia_data.strftime("%d/%m/%Y"),
-                "data": obter_data_hora() # Usando "data" para manter o padrão da função de renderizar
+                "data": obter_data_hora()
             })
             if salvar_dados(st.session_state.dados):
                 st.success("Data salva!")
                 st.rerun()
 
     st.divider()
-    def render_data(dt, css_class):
-        st.markdown(f"<div class='{css_class}'>📅 <b>{dt['titulo']}</b> no dia <b>{dt['dia']}</b><br><small>Adicionado por {dt['autor']} em {dt['data']}</small></div>", unsafe_allow_html=True)
-        
-    renderizar_itens("datas", render_data)
+    st.subheader("📜 Datas Salvas")
+    for i, dt in enumerate(st.session_state.dados["datas"]):
+        st.markdown(f"<div class='historico-card'>📅 <b>{dt['titulo']}</b> no dia <b>{dt['dia']}</b><br><small>Adicionado por {dt['autor']} em {dt['data']}</small></div>", unsafe_allow_html=True)
+        if e_admin and st.button("🗑️ Excluir", key=f"del_datas_{i}"):
+            deletar_item("datas", i)
 
-
-# --- ABA 6: COMIDAS ---
+# --- ABA 6: COMIDAS (Visual Feed Limpo) ---
 with t6:
     st.header("🍕 O que gostamos de comer")
     nome_comida = st.text_input("Nome da comida ou Restaurante:")
@@ -354,13 +361,13 @@ with t6:
                 st.rerun()
 
     st.divider()
-    def render_comida(cm, css_class):
-        st.markdown(f"<div class='{css_class}'>🍕 <b>{cm['nome']}</b> ({cm['tipo']})<br><small>Adicionado por {cm['autor']} em {cm['data']}</small></div>", unsafe_allow_html=True)
-        
-    renderizar_itens("comidas", render_comida)
+    st.subheader("📜 Lista de Comidas")
+    for i, cm in enumerate(st.session_state.dados["comidas"]):
+        st.markdown(f"<div class='historico-card'>🍕 <b>{cm['nome']}</b> ({cm['tipo']})<br><small>Adicionado por {cm['autor']} em {cm['data']}</small></div>", unsafe_allow_html=True)
+        if e_admin and st.button("🗑️ Excluir", key=f"del_comidas_{i}"):
+            deletar_item("comidas", i)
 
-
-# --- ABA 7: DATES ---
+# --- ABA 7: DATES (Visual Feed Limpo) ---
 with t7:
     st.header("🥂 Nossos Dates")
     ideia_date = st.text_input("Ideia de lugar ou date:")
@@ -379,7 +386,8 @@ with t7:
                 st.rerun()
 
     st.divider()
-    def render_date(dts, css_class):
-        st.markdown(f"<div class='{css_class}'>🥂 <b>{dts['ideia']}</b> - {dts['status']}<br><small>Adicionado por {dts['autor']} em {dts['data']}</small></div>", unsafe_allow_html=True)
-        
-    renderizar_itens("dates", render_date)
+    st.subheader("📜 Nossa Lista de Dates")
+    for i, dts in enumerate(st.session_state.dados["dates"]):
+        st.markdown(f"<div class='historico-card'>🥂 <b>{dts['ideia']}</b> - {dts['status']}<br><small>Adicionado por {dts['autor']} em {dts['data']}</small></div>", unsafe_allow_html=True)
+        if e_admin and st.button("🗑️ Excluir", key=f"del_dates_{i}"):
+            deletar_item("dates", i)
