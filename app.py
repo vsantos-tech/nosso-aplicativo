@@ -91,19 +91,30 @@ def processar_imagem(uploaded_file):
         return f"data:image/jpeg;base64,{img_str}"
     return None
 
-# 3. CONEXÃO COM O GITHUB
+# 3. CONEXÃO COM O GITHUB E ESTRUTURA DE DADOS
 @st.cache_resource
 def conectar_github():
     return Github(st.secrets["GITHUB_TOKEN"])
 
 def ler_dados():
+    opcoes_padrao = ["Feliz 😊", "Ansiosa 😰", "Cansada 🥱", "Empolgada ✨", "Triste 😢", "Com Saudade ❤️", "Estressada 🤯"]
     try:
         g = conectar_github()
         repo = g.get_repo(st.secrets["GITHUB_REPO"])
         file_content = repo.get_contents("dados_app.json")
-        return json.loads(file_content.decoded_content.decode())
+        dados = json.loads(file_content.decoded_content.decode())
+        
+        # Se for a primeira vez que entra após a atualização, cria a lista de opções
+        if "opcoes_sentimentos" not in dados:
+            dados["opcoes_sentimentos"] = opcoes_padrao
+            
+        return dados
     except Exception:
-        return {"recados": [], "sentimentos": [], "musicas": [], "fotos": [], "datas": [], "comidas": [], "dates": []}
+        return {
+            "recados": [], "sentimentos": [], "musicas": [], "fotos": [], 
+            "datas": [], "comidas": [], "dates": [], 
+            "opcoes_sentimentos": opcoes_padrao
+        }
 
 def salvar_dados(dados):
     try:
@@ -230,8 +241,22 @@ with t1:
 # --- ABA 2: SENTIMENTOS ---
 with t2:
     st.header("💭 Como estamos hoje?")
-    opcoes_sentimentos = ["Feliz 😊", "Ansiosa 😰", "Cansada 🥱", "Empolgada ✨", "Triste 😢", "Com Saudade ❤️", "Estressada 🤯"]
-    sentimento_escolhido = st.multiselect("Selecione seus sentimentos:", opcoes_sentimentos)
+    
+    # Carrega a lista de opções de sentimentos salva no banco de dados
+    opcoes_atuais = st.session_state.dados.get("opcoes_sentimentos", [])
+    
+    # Se o modo edição estiver ligado, permite adicionar novas opções à lista
+    if e_admin:
+        with st.expander("🛠️ Adicionar Nova Opção de Sentimento"):
+            novo_sentimento_opcao = st.text_input("Escreva o novo sentimento (ex: Animada 🥳):")
+            if st.button("➕ Adicionar à Lista"):
+                if novo_sentimento_opcao and novo_sentimento_opcao not in opcoes_atuais:
+                    st.session_state.dados["opcoes_sentimentos"].append(novo_sentimento_opcao)
+                    if salvar_dados(st.session_state.dados):
+                        st.success(f"Opção '{novo_sentimento_opcao}' adicionada com sucesso!")
+                        st.rerun()
+
+    sentimento_escolhido = st.multiselect("Selecione seus sentimentos:", opcoes_atuais)
     
     if st.button("Salvar Sentimento"):
         if sentimento_escolhido:
