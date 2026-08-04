@@ -1,376 +1,280 @@
-import base64
-import os
-from datetime import datetime, timedelta, timezone
-from PIL import Image, ImageOps
 import streamlit as st
-import pandas as pd
-from streamlit_gsheets import GSheetsConnection
+from github import Github
+import json
+from datetime import datetime, timedelta, timezone
+import base64
+from PIL import Image
+import io
 
-st.set_page_config(
-    page_title="Nosso Aplicativo 💗", page_icon="💗", layout="wide"
-)
+# 1. CONFIGURAÇÃO DA PÁGINA (Segura, não causa tela branca)
+st.set_page_config(page_title="Nosso Aplicativo 💗", page_icon="💗", layout="centered")
 
-# Evita o erro de tradução automática do Chrome quebrar a tela
-st.markdown('<meta name="google" content="notranslate">', unsafe_allow_html=True)
+# Estilo Rosa Suave e Seguro
+st.markdown("""
+    <style>
+    .stApp { background-color: #FFF0F5; }
+    h1, h2, h3, p { color: #800040; }
+    .stButton>button { background-color: #FF69B4; color: white; border-radius: 10px; border: none; font-weight: bold; }
+    div[data-testid="stExpander"] { background-color: white; border-radius: 10px; }
+    .historico-card { background-color: white; padding: 15px; border-radius: 10px; margin-bottom: 10px; border-left: 5px solid #FF69B4; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
+    </style>
+""", unsafe_allow_html=True)
 
-# Conexão com a Planilha do Google Sheets
-conn = st.connection("gsheets", type=GSheetsConnection)
+# 2. FUNÇÕES DE DATA E IMAGEM
+def obter_data_hora():
+    fuso = timezone(timedelta(hours=-3))
+    return datetime.now(fuso).strftime("%d/%m/%Y às %H:%M")
 
-UPLOADS_DIR = "uploads"
-if not os.path.exists(UPLOADS_DIR):
-    os.makedirs(UPLOADS_DIR)
+def processar_imagem(uploaded_file):
+    if uploaded_file is not None:
+        img = Image.open(uploaded_file)
+        img.thumbnail((600, 600)) # Reduz o tamanho para não travar o app
+        buffered = io.BytesIO()
+        img.save(buffered, format="JPEG")
+        img_str = base64.b64encode(buffered.getvalue()).decode()
+        return f"data:image/jpeg;base64,{img_str}"
+    return None
 
+# 3. CONEXÃO COM O GITHUB (SALVAMENTO PERMANENTE)
+@st.cache_resource
+def conectar_github():
+    return Github(st.secrets["GITHUB_TOKEN"])
 
-def obter_agora_brasilia():
-    fuso_brasilia = timezone(timedelta(hours=-3))
-    return datetime.now(fuso_brasilia)
-
-
-def formatar_data_hora():
-    return obter_agora_brasilia().strftime("%d/%m/%Y às %H:%M")
-
-
-def carregar_imagem_correta(caminho_ou_url):
-    if not caminho_ou_url:
-        return None
-    if str(caminho_ou_url).startswith(("http://", "https://", "data:image")):
-        return caminho_ou_url
+def ler_dados():
     try:
-        image = Image.open(caminho_ou_url)
-        image = ImageOps.exif_transpose(image)
-        return image
+        g = conectar_github()
+        repo = g.get_repo(st.secrets["GITHUB_REPO"])
+        file_content = repo.get_contents("dados_app.json")
+        return json.loads(file_content.decoded_content.decode())
     except Exception:
-        return caminho_ou_url
+        # Se o arquivo não existir, cria a estrutura vazia
+        return {"recados": [], "sentimentos": [], "musicas": [], "fotos": [], "datas": [], "comidas": [], "dates": []}
 
+def salvar_dados(dados):
+    try:
+        g = conectar_github()
+        repo = g.get_repo(st.secrets["GITHUB_REPO"])
+        content_str = json.dumps(dados, indent=4)
+        try:
+            contents = repo.get_contents("dados_app.json")
+            repo.update_file(contents.path, "Atualizando dados", content_str, contents.sha)
+        except:
+            repo.create_file("dados_app.json", "Criando banco de dados", content_str)
+        return True
+    except Exception as e:
+        st.error(f"Erro ao salvar: {e}")
+        return False
 
-def carregar_estilo_fundo():
-    bg_image_path = None
-    for ext in ["fundo.png", "fundo.jpg", "fundo.jpeg"]:
-        if os.path.exists(ext):
-            bg_image_path = ext
-            break
+# Inicializa os dados na sessão
+if "dados" not in st.session_state:
+    st.session_state.dados = ler_dados()
 
-    if bg_image_path:
-        with open(bg_image_path, "rb") as f:
-            bin_str = base64.b64encode(f.read()).decode()
-        bg_style = f'background-image: url("data:image/png;base64,{bin_str}");'
-    else:
-        bg_style = "background: linear-gradient(135deg, #FFD1DC 0%, #FFB07C 50%, #E65C83 100%);"
-
-    css = f"""
-        <style>
-        footer, [data-testid="stFooter"], [data-testid="stEmbedFooter"],
-        .stAppFooter, div[class*="stEmbedFooter"], div[class*="viewerBadge"],
-        .viewerBadge_container__1323f, [data-testid="stHeader"], header {{
-            display: none !important;
-            visibility: hidden !important;
-            height: 0px !important;
-            opacity: 0 !important;
-            pointer-events: none !important;
-        }}
-
-        html, body, [data-testid="stAppViewContainer"], .stApp {{
-            {bg_style}
-            background-size: cover !important;
-            background-position: center !important;
-            background-repeat: no-repeat !important;
-            background-attachment: fixed !important;
-        }}
-
-        .block-container {{
-            padding-top: 0.5rem !important;
-            padding-bottom: 2rem !important;
-            padding-left: 0.8rem !important;
-            padding-right: 0.8rem !important;
-            max-width: 100% !important;
-        }}
-
-        [data-testid="stAppToolbar"], [data-testid="stHeaderActionElements"],
-        [data-testid="stStatusWidget"], [data-testid="stDecoration"], #MainMenu {{
-            display: none !important;
-            visibility: hidden !important;
-        }}
-        
-        [data-testid="stSidebar"] {{
-            background-color: rgba(255, 240, 243, 0.98) !important;
-        }}
-        
-        h1, h2, h3, p, label, .stMarkdown, span, div {{
-            color: #4A1228 !important;
-            font-weight: 500;
-        }}
-
-        textarea, input[type="text"], input[type="password"], 
-        div[data-baseweb="input"], div[data-baseweb="textarea"], 
-        [data-testid="stFileUploader"] > div {{
-            background-color: rgba(255, 240, 243, 0.95) !important;
-            color: #4A1228 !important;
-            border: 1px solid #E65C83 !important;
-            border-radius: 10px !important;
-        }}
-
-        [data-testid="stFileUploader"] section {{
-            background-color: rgba(255, 240, 243, 0.95) !important;
-        }}
-        
-        div[data-baseweb="tab-list"] {{
-            gap: 2px !important;
-            display: flex !important;
-            justify-content: space-between !important;
-            width: 100% !important;
-        }}
-        
-        button[data-baseweb="tab"] {{
-            background-color: rgba(255, 255, 255, 0.85) !important;
-            color: #4A1228 !important;
-            font-weight: bold;
-            border-radius: 8px 8px 0px 0px;
-            padding: 6px 8px !important;
-            font-size: 12px !important;
-            flex-grow: 1 !important;
-            text-align: center !important;
-        }}
-        
-        button[aria-selected="true"] {{
-            border-bottom-color: #E65C83 !important;
-            color: #E65C83 !important;
-            background-color: rgba(255, 255, 255, 0.98) !important;
-        }}
-        
-        div.stAlert {{
-            background: linear-gradient(90deg, #E65C83 0%, #FF8A65 100%);
-            color: white !important;
-            border: none;
-            border-radius: 15px;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-        }}
-
-        div.stAlert * {{
-            color: white !important;
-        }}
-
-        .stButton>button {{
-            background: linear-gradient(90deg, #E65C83 0%, #F07865 100%);
-            color: white !important;
-            border-radius: 10px;
-            border: none;
-            font-weight: bold;
-            padding: 8px 16px;
-        }}
-        
-        .card-historico {{
-            background-color: rgba(255, 255, 255, 0.9);
-            border-radius: 10px;
-            padding: 12px;
-            margin-bottom: 10px;
-            border-left: 4px solid #E65C83;
-            font-size: 13px;
-        }}
-        </style>
-    """
-    st.markdown(css, unsafe_allow_html=True)
-
-
-carregar_estilo_fundo()
-
+# 4. TELA DE LOGIN
 if "usuario_atual" not in st.session_state:
     st.session_state.usuario_atual = None
 
-st.title("Nosso Aplicativo 💗")
-st.caption("Nosso cantinho especial de memórias, rotina e carinho.")
-
 if st.session_state.usuario_atual is None:
-    st.markdown("---")
-    st.subheader("✨ Quem é você?")
-    col_usr1, col_usr2 = st.columns(2)
-    with col_usr1:
-        if st.button("☀️ Larissa", key="btn_sou_larissa", use_container_width=True):
-            st.session_state.usuario_atual = "larissa"
-            st.session_state.e_admin = False
+    st.title("Nosso Aplicativo 💗")
+    st.write("Bem-vinda ao nosso cantinho! Quem está acessando?")
+    col1, col2 = st.columns(2)
+    with col1:
+        if st.button("☀️ Larissa", use_container_width=True):
+            st.session_state.usuario_atual = "Larissa"
             st.rerun()
-    with col_usr2:
-        if st.button("🌙 Vitória", key="btn_sou_vitoria", use_container_width=True):
-            st.session_state.usuario_atual = "vitoria"
+    with col2:
+        if st.button("🌙 Vitória", use_container_width=True):
+            st.session_state.usuario_atual = "Vitória"
             st.rerun()
     st.stop()
 
-# CABEÇALHO DO APP
-col_topo1, col_topo2, col_topo3 = st.columns([2, 1, 1])
+# 5. CABEÇALHO DO APP
+col_topo1, col_topo2 = st.columns([3, 1])
 with col_topo1:
-    nome_exib = "☀️ Larissa" if st.session_state.usuario_atual == "larissa" else "🌙 Vitória"
-    st.write(f"Conectada como: **{nome_exib}**")
-
+    st.title("Nosso Aplicativo 💗")
+    st.write(f"Logada como: **{st.session_state.usuario_atual}**")
 with col_topo2:
-    if st.button("🔄 Atualizar", key="btn_refresh_app"):
-        st.cache_data.clear()
-        st.toast("Página e dados atualizados!")
-        st.rerun()
-
-with col_topo3:
-    if st.button("👤 Trocar perfil", key="btn_trocar_usr"):
+    if st.button("Sair / Trocar", use_container_width=True):
         st.session_state.usuario_atual = None
-        st.session_state.e_admin = False
         st.rerun()
 
-if "e_admin" not in st.session_state:
-    st.session_state.e_admin = False
+# 6. AS 7 ABAS
+t1, t2, t3, t4, t5, t6, t7 = st.tabs(["💌 Recados", "💭 Sentimentos", "🎵 Músicas", "📸 Fotos", "📅 Datas", "🍕 Comidas", "🥂 Dates"])
 
-SENHA_CORRETA = "1234"
+# --- ABA 1: RECADOS ---
+with t1:
+    st.header("💌 Mural de Recados")
+    texto_recado = st.text_area("Escreva seu recado:")
+    foto_recado = st.file_uploader("Anexar foto da galeria (opcional)", type=["png", "jpg", "jpeg"])
+    
+    if st.button("Publicar Recado"):
+        if texto_recado or foto_recado:
+            img_b64 = processar_imagem(foto_recado)
+            novo_recado = {
+                "autor": st.session_state.usuario_atual,
+                "texto": texto_recado,
+                "foto": img_b64,
+                "data": obter_data_hora()
+            }
+            st.session_state.dados["recados"].insert(0, novo_recado)
+            if salvar_dados(st.session_state.dados):
+                st.success("Recado salvo para sempre!")
+                st.rerun()
+    
+    st.divider()
+    st.subheader("📜 Histórico de Recados")
+    for rec in st.session_state.dados["recados"]:
+        st.markdown(f"""
+        <div class="historico-card">
+            <b>{rec['autor']}</b> - <small>{rec['data']}</small><br>
+            <p style="margin-top: 10px;">{rec['texto']}</p>
+        </div>
+        """, unsafe_allow_html=True)
+        if rec.get('foto'):
+            st.image(rec['foto'], use_container_width=True)
 
-if st.session_state.usuario_atual == "vitoria":
-    with st.expander("🔑 Modo Edição (Vitória)", expanded=st.session_state.e_admin):
-        if not st.session_state.e_admin:
-            senha_input = st.text_input("Senha:", type="password", key="pwd_input_main")
-            if st.button("Entrar no Modo Edição", key="btn_login_admin_main"):
-                if senha_input == SENHA_CORRETA:
-                    st.session_state.e_admin = True
-                    st.success("Modo Edição Ativo!")
-                    st.rerun()
-                else:
-                    st.error("Senha incorreta!")
-        else:
-            st.success("✨ Modo Edição Ativo!")
-            if st.button("🚪 SALVAR E SAIR DO MODO EDIÇÃO", key="btn_sair_admin_main"):
-                st.session_state.e_admin = False
+# --- ABA 2: SENTIMENTOS ---
+with t2:
+    st.header("💭 Como estamos hoje?")
+    opcoes_sentimentos = ["Feliz 😊", "Ansiosa 😰", "Cansada 🥱", "Empolgada ✨", "Triste 😢", "Com Saudade ❤️", "Estressada 🤯"]
+    sentimento_escolhido = st.multiselect("Selecione seus sentimentos:", opcoes_sentimentos)
+    
+    if st.button("Salvar Sentimento"):
+        if sentimento_escolhido:
+            novo_sentimento = {
+                "autor": st.session_state.usuario_atual,
+                "sentimentos": ", ".join(sentimento_escolhido),
+                "data": obter_data_hora()
+            }
+            st.session_state.dados["sentimentos"].insert(0, novo_sentimento)
+            if salvar_dados(st.session_state.dados):
+                st.success("Sentimento registrado!")
                 st.rerun()
 
-e_admin = st.session_state.e_admin if st.session_state.usuario_atual == "vitoria" else False
+    st.divider()
+    st.subheader("📜 Histórico de Sentimentos")
+    for sen in st.session_state.dados["sentimentos"]:
+        st.markdown(f"<div class='historico-card'><b>{sen['autor']}</b> se sentiu: <b>{sen['sentimentos']}</b> <br><small>{sen['data']}</small></div>", unsafe_allow_html=True)
 
-tab_recado, tab_sentimento, tab_musicas, tab_fotos, tab_datas, tab_comidas, tab_dates = st.tabs(
-    ["☀️ Recado", "💭 Sentimento", "🎶 Músicas", "📸 Fotos", "📅 Datas", "🍕 Comidas", "🥂 Encontros"]
-)
-
-# =============================================================
-# ABA 1: RECADO
-# =============================================================
-with tab_recado:
-    if st.session_state.usuario_atual == "vitoria":
-        st.header("☀️ Recado para meu cheirinho")
-    else:
-        st.header("✨ Recado para meu benzinho")
-
-    try:
-        df_recados = conn.read(worksheet="Recados", ttl="0s")
-    except Exception:
-        df_recados = pd.DataFrame(columns=["Autor", "Mensagem", "Imagem_URL", "Data_Hora", "Resposta", "Data_Resposta"])
-
-    if not df_recados.empty:
-        ultimo_recado = df_recados.iloc[-1]
-        autor_rec = ultimo_recado.get("Autor", "Nós")
-        st.info(f"### {ultimo_recado.get('Mensagem', '')}")
-        st.caption(f"🕒 **Enviado por {autor_rec} em:** {ultimo_recado.get('Data_Hora', '')}")
-        
-        url_ou_base64 = ultimo_recado.get("Imagem_URL")
-        if pd.notna(url_ou_base64) and str(url_ou_base64).strip():
-            img_obj = carregar_imagem_correta(url_ou_base64)
-            if img_obj:
-                st.image(img_obj, width=280)
-
-        if pd.notna(ultimo_recado.get("Resposta")) and str(ultimo_recado.get("Resposta")).strip():
-            st.success(f"💬 **Resposta:** {ultimo_recado.get('Resposta')}")
-            st.caption(f"🕒 **Respondido em:** {ultimo_recado.get('Data_Resposta', '')}")
-
-    st.markdown("---")
-
-    st.subheader("✍️ Publicar Novo Lembrete")
-    quem_manda = "Vitória" if st.session_state.usuario_atual == "vitoria" else "Larissa"
-    novo_recado_txt = st.text_area(f"Escreva seu lembrete ({quem_manda}):", key="input_lembrete_geral")
+# --- ABA 3: MÚSICAS ---
+with t3:
+    st.header("🎵 Nossas Músicas")
+    nome_musica = st.text_input("Nome da Música e Artista:")
+    link_musica = st.text_input("Link do Spotify (opcional):")
     
-    tab_img1, tab_img2 = st.tabs(["📁 Anexar da Galeria / Dispositivo", "🔗 Link da Imagem"])
-    up_img_direto, url_img_direto = None, ""
-    
-    with tab_img1:
-        up_img_direto = st.file_uploader("Escolha uma imagem da sua galeria:", type=["png", "jpg", "jpeg", "webp"], key="up_img_direto")
-    with tab_img2:
-        url_img_direto = st.text_input("Cole a URL/Link da imagem:", key="url_img_direto")
-
-    if st.button("💌 Publicar Lembrete", key="btn_pub_lembrete_geral"):
-        imagem_para_salvar = ""
-
-        if up_img_direto is not None:
-            bytes_data = up_img_direto.getvalue()
-            b64_str = base64.b64encode(bytes_data).decode()
-            mime_type = up_img_direto.type
-            imagem_para_salvar = f"data:{mime_type};base64,{b64_str}"
-        elif url_img_direto.strip():
-            imagem_para_salvar = url_img_direto.strip()
-
-        if novo_recado_txt.strip() or imagem_para_salvar:
-            novo_dado = pd.DataFrame([{
-                "Autor": quem_manda,
-                "Mensagem": novo_recado_txt,
-                "Imagem_URL": imagem_para_salvar,
-                "Data_Hora": formatar_data_hora(),
-                "Resposta": "",
-                "Data_Resposta": ""
-            }])
-            df_atualizado = pd.concat([df_recados, novo_dado], ignore_index=True)
-            conn.update(worksheet="Recados", data=df_atualizado)
-            st.cache_data.clear()
-            st.toast("Lembrete publicado e foto salva para sempre! 💖")
-            st.rerun()
-
-    st.markdown("---")
-
-    with st.expander("💬 Responder ao Lembrete"):
-        txt_resposta = st.text_area("Sua resposta:", key="in_txt_resposta")
-        if st.button("Enviar Resposta", key="btn_send_resposta_rec"):
-            if not df_recados.empty and txt_resposta.strip():
-                df_recados.at[df_recados.index[-1], "Resposta"] = txt_resposta
-                df_recados.at[df_recados.index[-1], "Data_Resposta"] = formatar_data_hora()
-                conn.update(worksheet="Recados", data=df_recados)
-                st.cache_data.clear()
-                st.toast("Resposta enviada e salva na planilha! 💕")
+    if st.button("Adicionar Música"):
+        if nome_musica:
+            nova_musica = {
+                "autor": st.session_state.usuario_atual,
+                "nome": nome_musica,
+                "link": link_musica,
+                "data": obter_data_hora()
+            }
+            st.session_state.dados["musicas"].insert(0, nova_musica)
+            if salvar_dados(st.session_state.dados):
+                st.success("Música salva!")
                 st.rerun()
 
-    st.markdown("---")
-    with st.expander("📜 Histórico de Recados Anteriores", expanded=False):
-        if df_recados.empty:
-            st.write("Ainda não há recados salvos no histórico.")
-        else:
-            for idx, row in df_recados.iloc[::-1].iterrows():
-                st.markdown(
-                    f'<div class="card-historico"><b>📌 Recado de {row.get("Autor", "Nós")}:</b> {row.get("Mensagem", "")}<br><small>🕒 {row.get("Data_Hora", "")}</small></div>',
-                    unsafe_allow_html=True
-                )
-                
-                url_hist = row.get("Imagem_URL")
-                if pd.notna(url_hist) and str(url_hist).strip():
-                    img_h = carregar_imagem_correta(url_hist)
-                    if img_h:
-                        st.image(img_h, width=180)
+    st.divider()
+    st.subheader("📜 Histórico de Músicas")
+    for mus in st.session_state.dados["musicas"]:
+        link_str = f" - <a href='{mus['link']}' target='_blank'>Ouvir no Spotify</a>" if mus.get('link') else ""
+        st.markdown(f"<div class='historico-card'>🎵 <b>{mus['nome']}</b>{link_str}<br><small>Adicionado por {mus['autor']} em {mus['data']}</small></div>", unsafe_allow_html=True)
 
-                if pd.notna(row.get("Resposta")) and str(row.get("Resposta")).strip():
-                    st.write(f"💬 **Resposta:** {row.get('Resposta')}")
-                    st.caption(f"🕒 Respondido em: {row.get('Data_Resposta', '')}")
-                
-                if e_admin:
-                    if st.button(f"🗑️ Excluir #{idx+1}", key=f"btn_del_rec_{idx}"):
-                        df_recados = df_recados.drop(idx)
-                        conn.update(worksheet="Recados", data=df_recados)
-                        st.cache_data.clear()
-                        st.rerun()
-                st.markdown("<hr style='margin: 8px 0;'>", unsafe_allow_html=True)
+# --- ABA 4: FOTOS ---
+with t4:
+    st.header("📸 Nosso Mural de Fotos")
+    foto_mural = st.file_uploader("Escolha uma foto da galeria", type=["png", "jpg", "jpeg"], key="foto_mural")
+    legenda = st.text_input("Legenda da foto:")
+    
+    if st.button("Adicionar ao Mural"):
+        if foto_mural:
+            img_b64 = processar_imagem(foto_mural)
+            nova_foto = {
+                "autor": st.session_state.usuario_atual,
+                "legenda": legenda,
+                "foto": img_b64,
+                "data": obter_data_hora()
+            }
+            st.session_state.dados["fotos"].insert(0, nova_foto)
+            if salvar_dados(st.session_state.dados):
+                st.success("Foto adicionada ao mural!")
+                st.rerun()
 
-# =============================================================
-# DEMAIS ABAS
-# =============================================================
-with tab_sentimento:
-    st.header("💭 Como estamos nos sentindo hoje?")
-    st.info("Suas seleções e sentimentos ficam gravados direto na sua planilha do Google.")
+    st.divider()
+    st.subheader("📜 Histórico de Fotos")
+    for ft in st.session_state.dados["fotos"]:
+        st.markdown(f"**{ft['legenda']}** (Por {ft['autor']} em {ft['data']})")
+        st.image(ft['foto'], use_container_width=True)
+        st.markdown("---")
 
-with tab_musicas:
-    st.header("🎶 Músicas Que Lembram Nós")
-    st.write("Lista mantida em tempo real via Google Sheets.")
+# --- ABA 5: DATAS ---
+with t5:
+    st.header("📅 Datas Importantes")
+    nome_data = st.text_input("O que vamos comemorar/lembrar?")
+    dia_data = st.date_input("Escolha o dia:")
+    
+    if st.button("Salvar Data"):
+        if nome_data:
+            nova_data = {
+                "autor": st.session_state.usuario_atual,
+                "titulo": nome_data,
+                "dia": dia_data.strftime("%d/%m/%Y"),
+                "data_registro": obter_data_hora()
+            }
+            st.session_state.dados["datas"].insert(0, nova_data)
+            if salvar_dados(st.session_state.dados):
+                st.success("Data salva!")
+                st.rerun()
 
-with tab_fotos:
-    st.header("📸 Mural de Memórias")
+    st.divider()
+    st.subheader("📜 Histórico de Datas")
+    for dt in st.session_state.dados["datas"]:
+        st.markdown(f"<div class='historico-card'>📅 <b>{dt['titulo']}</b> no dia <b>{dt['dia']}</b><br><small>Adicionado por {dt['autor']} em {dt['data_registro']}</small></div>", unsafe_allow_html=True)
 
-with tab_datas:
-    st.header("📅 Datas Especiais")
+# --- ABA 6: COMIDAS ---
+with t6:
+    st.header("🍕 O que gostamos de comer")
+    nome_comida = st.text_input("Nome da comida ou Restaurante:")
+    tipo_comida = st.radio("Onde?", ["Fazer em Casa", "Comer Fora / Pedir"])
+    
+    if st.button("Salvar Comida"):
+        if nome_comida:
+            nova_comida = {
+                "autor": st.session_state.usuario_atual,
+                "nome": nome_comida,
+                "tipo": tipo_comida,
+                "data": obter_data_hora()
+            }
+            st.session_state.dados["comidas"].insert(0, nova_comida)
+            if salvar_dados(st.session_state.dados):
+                st.success("Comida salva!")
+                st.rerun()
 
-with tab_comidas:
-    st.header("🍕 O Que Amamos Comer")
+    st.divider()
+    st.subheader("📜 Histórico de Comidas")
+    for cm in st.session_state.dados["comidas"]:
+        st.markdown(f"<div class='historico-card'>🍕 <b>{cm['nome']}</b> ({cm['tipo']})<br><small>Adicionado por {cm['autor']} em {cm['data']}</small></div>", unsafe_allow_html=True)
 
-with tab_dates:
-    st.header("🥂 Nossos Encontros (Feitos & A Fazer)")
+# --- ABA 7: DATES ---
+with t7:
+    st.header("🥂 Nossos Dates")
+    ideia_date = st.text_input("Ideia de lugar ou date:")
+    status_date = st.radio("Status:", ["Queremos ir/fazer", "Já fomos/fizemos e amamos!"])
+    
+    if st.button("Salvar Date"):
+        if ideia_date:
+            novo_date = {
+                "autor": st.session_state.usuario_atual,
+                "ideia": ideia_date,
+                "status": status_date,
+                "data": obter_data_hora()
+            }
+            st.session_state.dados["dates"].insert(0, novo_date)
+            if salvar_dados(st.session_state.dados):
+                st.success("Date salvo!")
+                st.rerun()
+
+    st.divider()
+    st.subheader("📜 Histórico de Dates")
+    for dts in st.session_state.dados["dates"]:
+        st.markdown(f"<div class='historico-card'>🥂 <b>{dts['ideia']}</b> - {dts['status']}<br><small>Adicionado por {dts['autor']} em {dts['data']}</small></div>", unsafe_allow_html=True)
