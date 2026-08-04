@@ -7,12 +7,11 @@ from PIL import Image
 import io
 import os
 
-# 1. CONFIGURAÇÃO DA PÁGINA E IMAGEM DE FUNDO
+# 1. CONFIGURAÇÃO DA PÁGINA
 st.set_page_config(page_title="Nosso Aplicativo 💗", page_icon="💗", layout="centered")
 
 def carregar_estilo_fundo():
     bg_image_path = None
-    # Procura se você tem a imagem de fundo salva no seu GitHub
     for ext in ["fundo.png", "fundo.jpg", "fundo.jpeg"]:
         if os.path.exists(ext):
             bg_image_path = ext
@@ -23,7 +22,6 @@ def carregar_estilo_fundo():
             bin_str = base64.b64encode(f.read()).decode()
         bg_style = f'background-image: url("data:image/png;base64,{bin_str}");'
     else:
-        # Fundo rosa gradiente padrão caso não ache a imagem
         bg_style = "background: linear-gradient(135deg, #FFD1DC 0%, #FFB07C 50%, #E65C83 100%);"
 
     css = f"""
@@ -34,11 +32,12 @@ def carregar_estilo_fundo():
             background-position: center !important;
             background-attachment: fixed !important;
         }}
-        h1, h2, h3, p {{ 
+        
+        /* Força a cor do texto geral para escuro */
+        h1, h2, h3, p, span, div {{ 
             color: #4A1228 !important; 
-            font-weight: bold; 
-            text-shadow: 1px 1px 3px rgba(255,255,255,0.7); 
         }}
+        
         .stButton>button {{ 
             background: linear-gradient(90deg, #E65C83 0%, #F07865 100%); 
             color: white !important; 
@@ -46,17 +45,26 @@ def carregar_estilo_fundo():
             border: none; 
             font-weight: bold; 
         }}
-        div[data-testid="stExpander"] {{ 
-            background-color: rgba(255, 255, 255, 0.85); 
-            border-radius: 10px; 
-        }}
-        .historico-card {{ 
-            background-color: rgba(255, 255, 255, 0.9); 
+        
+        /* Estilo dos Cards (Destaque e Histórico) com texto escuro garantido */
+        .historico-card, .destaque-card {{ 
+            background-color: rgba(255, 255, 255, 0.95); 
             padding: 15px; 
             border-radius: 10px; 
             margin-bottom: 10px; 
-            border-left: 5px solid #FF69B4; 
             box-shadow: 0 2px 5px rgba(0,0,0,0.1); 
+        }}
+        .historico-card {{
+            border-left: 5px solid #E65C83; 
+        }}
+        .destaque-card {{
+            border-left: 5px solid #FFD700; /* Dourado para o destaque do dia */
+        }}
+        
+        /* Garante que o texto dentro das caixas seja escuro */
+        .historico-card b, .historico-card p, .historico-card small,
+        .destaque-card b, .destaque-card p, .destaque-card small {{
+            color: #4A1228 !important;
         }}
         </style>
     """
@@ -65,21 +73,26 @@ def carregar_estilo_fundo():
 carregar_estilo_fundo()
 
 # 2. FUNÇÕES DE DATA E IMAGEM
+def obter_fuso_horario():
+    return timezone(timedelta(hours=-3))
+
 def obter_data_hora():
-    fuso = timezone(timedelta(hours=-3))
-    return datetime.now(fuso).strftime("%d/%m/%Y às %H:%M")
+    return datetime.now(obter_fuso_horario()).strftime("%d/%m/%Y às %H:%M")
+
+def obter_data_hoje():
+    return datetime.now(obter_fuso_horario()).strftime("%d/%m/%Y")
 
 def processar_imagem(uploaded_file):
     if uploaded_file is not None:
         img = Image.open(uploaded_file)
-        img.thumbnail((600, 600)) # Reduz o tamanho para o app não travar
+        img.thumbnail((600, 600))
         buffered = io.BytesIO()
         img.save(buffered, format="JPEG")
         img_str = base64.b64encode(buffered.getvalue()).decode()
         return f"data:image/jpeg;base64,{img_str}"
     return None
 
-# 3. CONEXÃO COM O GITHUB (SALVAMENTO PERMANENTE)
+# 3. CONEXÃO COM O GITHUB
 @st.cache_resource
 def conectar_github():
     return Github(st.secrets["GITHUB_TOKEN"])
@@ -108,6 +121,11 @@ def salvar_dados(dados):
         st.error(f"Erro ao salvar: {e}")
         return False
 
+def deletar_item(categoria, index):
+    st.session_state.dados[categoria].pop(index)
+    salvar_dados(st.session_state.dados)
+    st.rerun()
+
 if "dados" not in st.session_state:
     st.session_state.dados = ler_dados()
 
@@ -129,50 +147,91 @@ if st.session_state.usuario_atual is None:
             st.rerun()
     st.stop()
 
-# 5. CABEÇALHO DO APP
-col_topo1, col_topo2 = st.columns([3, 1])
+# 5. CABEÇALHO DO APP E MODO EDIÇÃO
+col_topo1, col_topo2 = st.columns([2, 1])
 with col_topo1:
     st.title("Nosso Aplicativo 💗")
     st.write(f"Logada como: **{st.session_state.usuario_atual}**")
+
 with col_topo2:
     if st.button("Sair / Trocar", use_container_width=True):
         st.session_state.usuario_atual = None
         st.rerun()
+        
+e_admin = False
+if st.session_state.usuario_atual == "Vitória":
+    e_admin = st.toggle("🛠️ Modo Edição (Apenas Vitória)")
+
+hoje = obter_data_hoje()
 
 # 6. AS 7 ABAS
 t1, t2, t3, t4, t5, t6, t7 = st.tabs(["💌 Recados", "💭 Sentimentos", "🎵 Músicas", "📸 Fotos", "📅 Datas", "🍕 Comidas", "🥂 Dates"])
+
+# --- FUNÇÃO AUXILIAR PARA RENDERIZAR ITENS ---
+def renderizar_itens(categoria, render_func):
+    tem_hoje = False
+    tem_historico = False
+    
+    # Renderiza Destaques de Hoje
+    for i, item in enumerate(st.session_state.dados[categoria]):
+        if item['data'].startswith(hoje):
+            if not tem_hoje:
+                st.subheader("🌟 Destaques de Hoje")
+                tem_hoje = True
+            render_func(item, "destaque-card")
+            if e_admin:
+                if st.button("🗑️ Excluir", key=f"del_{categoria}_hoje_{i}"):
+                    deletar_item(categoria, i)
+    
+    st.divider()
+    
+    # Renderiza Histórico (Antes de Hoje)
+    for i, item in enumerate(st.session_state.dados[categoria]):
+        if not item['data'].startswith(hoje):
+            if not tem_historico:
+                st.subheader("📜 Histórico")
+                tem_historico = True
+            render_func(item, "historico-card")
+            if e_admin:
+                if st.button("🗑️ Excluir", key=f"del_{categoria}_hist_{i}"):
+                    deletar_item(categoria, i)
+                    
+    if not tem_historico:
+        st.write("O histórico está vazio.")
+
 
 # --- ABA 1: RECADOS ---
 with t1:
     st.header("💌 Mural de Recados")
     texto_recado = st.text_area("Escreva seu recado:")
-    foto_recado = st.file_uploader("Anexar foto da galeria (opcional)", type=["png", "jpg", "jpeg"])
+    foto_recado = st.file_uploader("Anexar foto (opcional)", type=["png", "jpg", "jpeg"], key="up_recado")
     
     if st.button("Publicar Recado"):
         if texto_recado or foto_recado:
             img_b64 = processar_imagem(foto_recado)
-            novo_recado = {
+            st.session_state.dados["recados"].insert(0, {
                 "autor": st.session_state.usuario_atual,
                 "texto": texto_recado,
                 "foto": img_b64,
                 "data": obter_data_hora()
-            }
-            st.session_state.dados["recados"].insert(0, novo_recado)
+            })
             if salvar_dados(st.session_state.dados):
-                st.success("Recado salvo para sempre!")
+                st.success("Publicado!")
                 st.rerun()
     
     st.divider()
-    st.subheader("📜 Histórico de Recados")
-    for rec in st.session_state.dados["recados"]:
+    def render_recado(rec, css_class):
         st.markdown(f"""
-        <div class="historico-card">
+        <div class="{css_class}">
             <b>{rec['autor']}</b> - <small>{rec['data']}</small><br>
             <p style="margin-top: 10px;">{rec['texto']}</p>
         </div>
         """, unsafe_allow_html=True)
         if rec.get('foto'):
             st.image(rec['foto'], use_container_width=True)
+            
+    renderizar_itens("recados", render_recado)
+
 
 # --- ABA 2: SENTIMENTOS ---
 with t2:
@@ -182,20 +241,21 @@ with t2:
     
     if st.button("Salvar Sentimento"):
         if sentimento_escolhido:
-            novo_sentimento = {
+            st.session_state.dados["sentimentos"].insert(0, {
                 "autor": st.session_state.usuario_atual,
                 "sentimentos": ", ".join(sentimento_escolhido),
                 "data": obter_data_hora()
-            }
-            st.session_state.dados["sentimentos"].insert(0, novo_sentimento)
+            })
             if salvar_dados(st.session_state.dados):
                 st.success("Sentimento registrado!")
                 st.rerun()
 
     st.divider()
-    st.subheader("📜 Histórico de Sentimentos")
-    for sen in st.session_state.dados["sentimentos"]:
-        st.markdown(f"<div class='historico-card'><b>{sen['autor']}</b> se sentiu: <b>{sen['sentimentos']}</b> <br><small>{sen['data']}</small></div>", unsafe_allow_html=True)
+    def render_sentimento(sen, css_class):
+        st.markdown(f"<div class='{css_class}'><b>{sen['autor']}</b> se sentiu: <b>{sen['sentimentos']}</b> <br><small>{sen['data']}</small></div>", unsafe_allow_html=True)
+        
+    renderizar_itens("sentimentos", render_sentimento)
+
 
 # --- ABA 3: MÚSICAS ---
 with t3:
@@ -205,22 +265,23 @@ with t3:
     
     if st.button("Adicionar Música"):
         if nome_musica:
-            nova_musica = {
+            st.session_state.dados["musicas"].insert(0, {
                 "autor": st.session_state.usuario_atual,
                 "nome": nome_musica,
                 "link": link_musica,
                 "data": obter_data_hora()
-            }
-            st.session_state.dados["musicas"].insert(0, nova_musica)
+            })
             if salvar_dados(st.session_state.dados):
                 st.success("Música salva!")
                 st.rerun()
 
     st.divider()
-    st.subheader("📜 Histórico de Músicas")
-    for mus in st.session_state.dados["musicas"]:
+    def render_musica(mus, css_class):
         link_str = f" - <a href='{mus['link']}' target='_blank'>Ouvir no Spotify</a>" if mus.get('link') else ""
-        st.markdown(f"<div class='historico-card'>🎵 <b>{mus['nome']}</b>{link_str}<br><small>Adicionado por {mus['autor']} em {mus['data']}</small></div>", unsafe_allow_html=True)
+        st.markdown(f"<div class='{css_class}'>🎵 <b>{mus['nome']}</b>{link_str}<br><small>Adicionado por {mus['autor']} em {mus['data']}</small></div>", unsafe_allow_html=True)
+        
+    renderizar_itens("musicas", render_musica)
+
 
 # --- ABA 4: FOTOS ---
 with t4:
@@ -231,23 +292,23 @@ with t4:
     if st.button("Adicionar ao Mural"):
         if foto_mural:
             img_b64 = processar_imagem(foto_mural)
-            nova_foto = {
+            st.session_state.dados["fotos"].insert(0, {
                 "autor": st.session_state.usuario_atual,
                 "legenda": legenda,
                 "foto": img_b64,
                 "data": obter_data_hora()
-            }
-            st.session_state.dados["fotos"].insert(0, nova_foto)
+            })
             if salvar_dados(st.session_state.dados):
-                st.success("Foto adicionada ao mural!")
+                st.success("Foto adicionada!")
                 st.rerun()
 
     st.divider()
-    st.subheader("📜 Histórico de Fotos")
-    for ft in st.session_state.dados["fotos"]:
-        st.markdown(f"**{ft['legenda']}** (Por {ft['autor']} em {ft['data']})")
+    def render_foto(ft, css_class):
+        st.markdown(f"<div class='{css_class}'><b>{ft['legenda']}</b><br><small>Por {ft['autor']} em {ft['data']}</small></div>", unsafe_allow_html=True)
         st.image(ft['foto'], use_container_width=True)
-        st.markdown("---")
+        
+    renderizar_itens("fotos", render_foto)
+
 
 # --- ABA 5: DATAS ---
 with t5:
@@ -257,21 +318,22 @@ with t5:
     
     if st.button("Salvar Data"):
         if nome_data:
-            nova_data = {
+            st.session_state.dados["datas"].insert(0, {
                 "autor": st.session_state.usuario_atual,
                 "titulo": nome_data,
                 "dia": dia_data.strftime("%d/%m/%Y"),
-                "data_registro": obter_data_hora()
-            }
-            st.session_state.dados["datas"].insert(0, nova_data)
+                "data": obter_data_hora() # Usando "data" para manter o padrão da função de renderizar
+            })
             if salvar_dados(st.session_state.dados):
                 st.success("Data salva!")
                 st.rerun()
 
     st.divider()
-    st.subheader("📜 Histórico de Datas")
-    for dt in st.session_state.dados["datas"]:
-        st.markdown(f"<div class='historico-card'>📅 <b>{dt['titulo']}</b> no dia <b>{dt['dia']}</b><br><small>Adicionado por {dt['autor']} em {dt['data_registro']}</small></div>", unsafe_allow_html=True)
+    def render_data(dt, css_class):
+        st.markdown(f"<div class='{css_class}'>📅 <b>{dt['titulo']}</b> no dia <b>{dt['dia']}</b><br><small>Adicionado por {dt['autor']} em {dt['data']}</small></div>", unsafe_allow_html=True)
+        
+    renderizar_itens("datas", render_data)
+
 
 # --- ABA 6: COMIDAS ---
 with t6:
@@ -281,21 +343,22 @@ with t6:
     
     if st.button("Salvar Comida"):
         if nome_comida:
-            nova_comida = {
+            st.session_state.dados["comidas"].insert(0, {
                 "autor": st.session_state.usuario_atual,
                 "nome": nome_comida,
                 "tipo": tipo_comida,
                 "data": obter_data_hora()
-            }
-            st.session_state.dados["comidas"].insert(0, nova_comida)
+            })
             if salvar_dados(st.session_state.dados):
                 st.success("Comida salva!")
                 st.rerun()
 
     st.divider()
-    st.subheader("📜 Histórico de Comidas")
-    for cm in st.session_state.dados["comidas"]:
-        st.markdown(f"<div class='historico-card'>🍕 <b>{cm['nome']}</b> ({cm['tipo']})<br><small>Adicionado por {cm['autor']} em {cm['data']}</small></div>", unsafe_allow_html=True)
+    def render_comida(cm, css_class):
+        st.markdown(f"<div class='{css_class}'>🍕 <b>{cm['nome']}</b> ({cm['tipo']})<br><small>Adicionado por {cm['autor']} em {cm['data']}</small></div>", unsafe_allow_html=True)
+        
+    renderizar_itens("comidas", render_comida)
+
 
 # --- ABA 7: DATES ---
 with t7:
@@ -305,18 +368,18 @@ with t7:
     
     if st.button("Salvar Date"):
         if ideia_date:
-            novo_date = {
+            st.session_state.dados["dates"].insert(0, {
                 "autor": st.session_state.usuario_atual,
                 "ideia": ideia_date,
                 "status": status_date,
                 "data": obter_data_hora()
-            }
-            st.session_state.dados["dates"].insert(0, novo_date)
+            })
             if salvar_dados(st.session_state.dados):
                 st.success("Date salvo!")
                 st.rerun()
 
     st.divider()
-    st.subheader("📜 Histórico de Dates")
-    for dts in st.session_state.dados["dates"]:
-        st.markdown(f"<div class='historico-card'>🥂 <b>{dts['ideia']}</b> - {dts['status']}<br><small>Adicionado por {dts['autor']} em {dts['data']}</small></div>", unsafe_allow_html=True)
+    def render_date(dts, css_class):
+        st.markdown(f"<div class='{css_class}'>🥂 <b>{dts['ideia']}</b> - {dts['status']}<br><small>Adicionado por {dts['autor']} em {dts['data']}</small></div>", unsafe_allow_html=True)
+        
+    renderizar_itens("dates", render_date)
