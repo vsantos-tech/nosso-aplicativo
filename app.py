@@ -104,18 +104,22 @@ def obter_data_hoje():
 
 def processar_imagem(uploaded_file):
     if uploaded_file is not None:
-        img = Image.open(uploaded_file)
-        img = ImageOps.exif_transpose(img) 
-        
-        # Converte imagens com transparência (RGBA/P) para RGB para evitar OSError ao salvar em JPEG
-        if img.mode in ("RGBA", "P"):
-            img = img.convert("RGB")
+        try:
+            img = Image.open(uploaded_file)
+            img = ImageOps.exif_transpose(img) 
             
-        img.thumbnail((600, 600))
-        buffered = io.BytesIO()
-        img.save(buffered, format="JPEG")
-        img_str = base64.b64encode(buffered.getvalue()).decode()
-        return f"data:image/jpeg;base64,{img_str}"
+            # Converte transparências para RGB
+            if img.mode in ("RGBA", "P"):
+                img = img.convert("RGB")
+                
+            # Redimensiona para resolução leve
+            img.thumbnail((500, 500))
+            buffered = io.BytesIO()
+            img.save(buffered, format="JPEG", quality=75, optimize=True)
+            img_str = base64.b64encode(buffered.getvalue()).decode()
+            return f"data:image/jpeg;base64,{img_str}"
+        except Exception:
+            return None
     return None
 
 # 3. CONEXÃO SEGURA COM O GITHUB
