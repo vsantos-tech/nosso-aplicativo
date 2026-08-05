@@ -3,8 +3,6 @@ from github import Github
 import json
 from datetime import datetime, timedelta, timezone
 import base64
-from PIL import Image, ImageOps
-import io
 
 # 1. CONFIGURAÇÃO DA PÁGINA
 st.set_page_config(page_title="Nosso Aplicativo 💗", page_icon="💗", layout="centered")
@@ -12,7 +10,7 @@ st.set_page_config(page_title="Nosso Aplicativo 💗", page_icon="💗", layout=
 # Impede erros de tradução do Chrome
 st.markdown('<meta name="google" content="notranslate">', unsafe_allow_html=True)
 
-# Fundo em CSS
+# Fundo em CSS + CSS para imagens nítidas
 css = """
     <style>
     .stApp {
@@ -70,6 +68,17 @@ css = """
     .historico-card small, .destaque-card small {
         color: #666666 !important;
     }
+
+    /* Garante exibição de foto com nitidez total */
+    .img-nitida {
+        width: 100%;
+        max-width: 100%;
+        border-radius: 12px;
+        margin-top: 10px;
+        margin-bottom: 10px;
+        image-rendering: -webkit-optimize-contrast;
+        image-rendering: crisp-edges;
+    }
     </style>
 """
 st.markdown(css, unsafe_allow_html=True)
@@ -87,19 +96,18 @@ def obter_data_hoje():
 def processar_imagem(uploaded_file):
     if uploaded_file is not None:
         try:
-            img = Image.open(uploaded_file)
-            img = ImageOps.exif_transpose(img) 
-            if img.mode in ("RGBA", "P"):
-                img = img.convert("RGB")
-            # Aumentado para 1600px de resolução máxima com 95% de qualidade (praticamente sem perda)
-            img.thumbnail((1600, 1600))
-            buffered = io.BytesIO()
-            img.save(buffered, format="JPEG", quality=95, optimize=True)
-            img_str = base64.b64encode(buffered.getvalue()).decode()
-            return f"data:image/jpeg;base64,{img_str}"
+            # Lê os bytes originais da foto SEM NENHUMA COMPRESSÃO
+            bytes_data = uploaded_file.getvalue()
+            tipo_mime = uploaded_file.type if uploaded_file.type else "image/jpeg"
+            img_str = base64.b64encode(bytes_data).decode()
+            return f"data:{tipo_mime};base64,{img_str}"
         except Exception:
             return None
     return None
+
+def exibir_foto_nitida(foto_b64):
+    if foto_b64:
+        st.markdown(f'<img src="{foto_b64}" class="img-nitida" />', unsafe_allow_html=True)
 
 # 3. CONEXÃO SEGURA COM O GITHUB
 @st.cache_data(ttl=600)
@@ -194,7 +202,7 @@ e_admin = False
 if st.session_state.usuario_atual == "Vitória":
     e_admin = st.toggle("🛠️ Modo Edição (Apenas Vitória)")
 
-hoje = obter_data_hoje()
+hoje = obtaining_today := obter_data_hoje()
 
 # 6. AS 7 ABAS
 t1, t2, t3, t4, t5, t6, t7 = st.tabs(["💌 Recados", "💭 Sentimentos", "🎵 Músicas", "📸 Fotos", "📅 Datas", "🍕 Comidas", "🥂 Dates"])
@@ -231,10 +239,7 @@ with t1:
             </div>
             """, unsafe_allow_html=True)
             if item.get('foto'):
-                try:
-                    st.image(item['foto'])
-                except Exception:
-                    pass
+                exibir_foto_nitida(item['foto'])
         st.divider()
 
     with st.expander("📜 Ver Histórico Completo de Recados", expanded=False):
@@ -250,10 +255,7 @@ with t1:
                 """, unsafe_allow_html=True)
                 
                 if item.get('foto'):
-                    try:
-                        st.image(item['foto'])
-                    except Exception:
-                        pass
+                    exibir_foto_nitida(item['foto'])
                     
                 if e_admin:
                     c1, c2 = st.columns(2)
@@ -422,10 +424,7 @@ with t4:
     for i, ft in enumerate(st.session_state.dados["fotos"]):
         st.markdown(f"<div class='historico-card'><b>{ft['legenda']}</b><br><small>Por {ft['autor']} em {ft['data']}</small></div>", unsafe_allow_html=True)
         if ft.get('foto'):
-            try:
-                st.image(ft['foto'])
-            except Exception:
-                pass
+            exibir_foto_nitida(ft['foto'])
         if e_admin:
             c1, c2 = st.columns(2)
             with c1:
