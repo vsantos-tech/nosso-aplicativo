@@ -111,16 +111,15 @@ def processar_imagem(uploaded_file):
                 img = img.convert("RGB")
             img.thumbnail((400, 400))
             buffered = io.BytesIO()
-            img.save(buffered, format="JPEG", quality=70, optimize=True)
+            img.save(buffered, format="JPEG", quality=65, optimize=True)
             img_str = base64.b64encode(buffered.getvalue()).decode()
             return f"data:image/jpeg;base64,{img_str}"
         except Exception:
             return None
     return None
 
-# 3. CONEXÃO SEGURA COM O GITHUB (COM CACHE)
-@st.cache_data(ttl=5)
-def ler_dados_github(token, repo_name):
+# 3. CONEXÃO COM O GITHUB
+def ler_dados():
     opcoes_padrao = ["Feliz 😊", "Ansiosa 😰", "Cansada 🥱", "Empolgada ✨", "Triste 😢", "Com Saudade ❤️", "Estressada 🤯"]
     estrutura_padrao = {
         "recados": [], "sentimentos": [], "musicas": [], "fotos": [], 
@@ -128,25 +127,20 @@ def ler_dados_github(token, repo_name):
         "opcoes_sentimentos": opcoes_padrao
     }
     try:
-        g = Github(token)
-        repo = g.get_repo(repo_name)
+        if "GITHUB_TOKEN" not in st.secrets or "GITHUB_REPO" not in st.secrets:
+            return estrutura_padrao
+            
+        g = Github(st.secrets["GITHUB_TOKEN"])
+        repo = g.get_repo(st.secrets["GITHUB_REPO"])
         file_content = repo.get_contents("dados_app.json")
         dados = json.loads(file_content.decoded_content.decode())
+        
         if "opcoes_sentimentos" not in dados:
             dados["opcoes_sentimentos"] = opcoes_padrao
+            
         return dados
     except Exception:
         return estrutura_padrao
-
-def ler_dados():
-    if "GITHUB_TOKEN" in st.secrets and "GITHUB_REPO" in st.secrets:
-        return ler_dados_github(st.secrets["GITHUB_TOKEN"], st.secrets["GITHUB_REPO"])
-    opcoes_padrao = ["Feliz 😊", "Ansiosa 😰", "Cansada 🥱", "Empolgada ✨", "Triste 😢", "Com Saudade ❤️", "Estressada 🤯"]
-    return {
-        "recados": [], "sentimentos": [], "musicas": [], "fotos": [], 
-        "datas": [], "comidas": [], "dates": [], 
-        "opcoes_sentimentos": opcoes_padrao
-    }
 
 def salvar_dados(dados):
     try:
@@ -156,13 +150,12 @@ def salvar_dados(dados):
             
         g = Github(st.secrets["GITHUB_TOKEN"])
         repo = g.get_repo(st.secrets["GITHUB_REPO"])
-        content_str = json.dumps(dados, indent=4)
+        content_str = json.dumps(dados, indent=2)
         try:
             contents = repo.get_contents("dados_app.json")
             repo.update_file(contents.path, "Atualizando dados", content_str, contents.sha)
         except Exception:
             repo.create_file("dados_app.json", "Criando banco de dados", content_str)
-        st.cache_data.clear()
         return True
     except Exception as e:
         st.error(f"Erro ao salvar dados no GitHub: {e}")
@@ -249,7 +242,10 @@ with t1:
             </div>
             """, unsafe_allow_html=True)
             if item.get('foto'):
-                st.image(item['foto'])
+                try:
+                    st.image(item['foto'])
+                except Exception:
+                    pass
         st.divider()
 
     with st.expander("📜 Ver Histórico Completo de Recados", expanded=False):
@@ -265,7 +261,10 @@ with t1:
                 """, unsafe_allow_html=True)
                 
                 if item.get('foto'):
-                    st.image(item['foto'])
+                    try:
+                        st.image(item['foto'])
+                    except Exception:
+                        pass
                     
                 if e_admin:
                     c1, c2 = st.columns(2)
@@ -433,7 +432,11 @@ with t4:
     st.subheader("📜 Álbum")
     for i, ft in enumerate(st.session_state.dados["fotos"]):
         st.markdown(f"<div class='historico-card'><b>{ft['legenda']}</b><br><small>Por {ft['autor']} em {ft['data']}</small></div>", unsafe_allow_html=True)
-        st.image(ft['foto'])
+        if ft.get('foto'):
+            try:
+                st.image(ft['foto'])
+            except Exception:
+                pass
         if e_admin:
             c1, c2 = st.columns(2)
             with c1:
