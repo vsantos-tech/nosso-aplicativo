@@ -164,6 +164,9 @@ def deletar_item(categoria, index):
 if "dados" not in st.session_state:
     st.session_state.dados = ler_dados()
 
+if "editando" not in st.session_state:
+    st.session_state.editando = None
+
 # 4. TELA DE LOGIN
 if "usuario_atual" not in st.session_state:
     st.session_state.usuario_atual = None
@@ -258,11 +261,23 @@ with t1:
                         if st.button("🗑️ Excluir", key=f"del_rec_{i}"):
                             deletar_item("recados", i)
                     with c2:
-                        with st.popover("✏️ Alterar"):
-                            novo_texto = st.text_area("Novo texto:", value=item['texto'], key=f"edit_rec_{i}")
-                            if st.button("Salvar", key=f"save_rec_{i}"):
+                        key_edit = f"recados_{i}"
+                        if st.button("✏️ Alterar", key=f"btn_edit_rec_{i}"):
+                            st.session_state.editando = key_edit if st.session_state.editando != key_edit else None
+                            st.rerun()
+
+                    if st.session_state.editando == f"recados_{i}":
+                        novo_texto = st.text_area("Editar recado:", value=item['texto'], key=f"edit_rec_txt_{i}")
+                        c_s1, c_s2 = st.columns(2)
+                        with c_s1:
+                            if st.button("Salvar Alteração", key=f"save_rec_{i}"):
                                 st.session_state.dados["recados"][i]['texto'] = novo_texto
                                 salvar_dados(st.session_state.dados)
+                                st.session_state.editando = None
+                                st.rerun()
+                        with c_s2:
+                            if st.button("Cancelar", key=f"canc_rec_{i}"):
+                                st.session_state.editando = None
                                 st.rerun()
 
 # --- ABA 2: SENTIMENTOS ---
@@ -271,14 +286,25 @@ with t2:
     opcoes_atuais = st.session_state.dados.get("opcoes_sentimentos", [])
     
     if e_admin:
-        with st.popover("🛠️ Adicionar Nova Opção de Sentimento"):
+        if st.button("🛠️ Adicionar Nova Opção de Sentimento", key="btn_add_opt_sen"):
+            st.session_state.editando = "add_opcao_sentimento" if st.session_state.editando != "add_opcao_sentimento" else None
+            st.rerun()
+
+        if st.session_state.editando == "add_opcao_sentimento":
             novo_sentimento_opcao = st.text_input("Escreva o novo sentimento (ex: Animada 🥳):")
-            if st.button("➕ Adicionar à Lista"):
-                if novo_sentimento_opcao and novo_sentimento_opcao not in opcoes_atuais:
-                    st.session_state.dados["opcoes_sentimentos"].append(novo_sentimento_opcao)
-                    if salvar_dados(st.session_state.dados):
-                        st.success(f"Opção '{novo_sentimento_opcao}' adicionada com sucesso!")
-                        st.rerun()
+            c_opt1, c_opt2 = st.columns(2)
+            with c_opt1:
+                if st.button("➕ Adicionar à Lista", key="btn_save_opt_sen"):
+                    if novo_sentimento_opcao and novo_sentimento_opcao not in opcoes_atuais:
+                        st.session_state.dados["opcoes_sentimentos"].append(novo_sentimento_opcao)
+                        if salvar_dados(st.session_state.dados):
+                            st.success(f"Opção '{novo_sentimento_opcao}' adicionada com sucesso!")
+                            st.session_state.editando = None
+                            st.rerun()
+            with c_opt2:
+                if st.button("Cancelar", key="canc_opt_sen"):
+                    st.session_state.editando = None
+                    st.rerun()
 
     sentimento_escolhido = st.multiselect("Selecione seus sentimentos:", opcoes_atuais)
     
@@ -303,11 +329,23 @@ with t2:
                 if st.button("🗑️ Excluir", key=f"del_sen_{i}"):
                     deletar_item("sentimentos", i)
             with c2:
-                with st.popover("✏️ Alterar"):
-                    novo_sen = st.text_input("Editar sentimento:", value=sen['sentimentos'], key=f"edit_sen_{i}")
-                    if st.button("Salvar", key=f"save_sen_{i}"):
+                key_edit = f"sentimentos_{i}"
+                if st.button("✏️ Alterar", key=f"btn_edit_sen_{i}"):
+                    st.session_state.editando = key_edit if st.session_state.editando != key_edit else None
+                    st.rerun()
+
+            if st.session_state.editando == f"sentimentos_{i}":
+                novo_sen = st.text_input("Editar sentimento:", value=sen['sentimentos'], key=f"edit_sen_txt_{i}")
+                c_s1, c_s2 = st.columns(2)
+                with c_s1:
+                    if st.button("Salvar Alteração", key=f"save_sen_{i}"):
                         st.session_state.dados["sentimentos"][i]['sentimentos'] = novo_sen
                         salvar_dados(st.session_state.dados)
+                        st.session_state.editando = None
+                        st.rerun()
+                with c_s2:
+                    if st.button("Cancelar", key=f"canc_sen_{i}"):
+                        st.session_state.editando = None
                         st.rerun()
 
 # --- ABA 3: MÚSICAS ---
@@ -339,13 +377,25 @@ with t3:
                 if st.button("🗑️ Excluir", key=f"del_mus_{i}"):
                     deletar_item("musicas", i)
             with c2:
-                with st.popover("✏️ Alterar"):
-                    novo_nome = st.text_input("Nome:", value=mus['nome'], key=f"edit_mus_nome_{i}")
-                    novo_link = st.text_input("Link:", value=mus.get('link', ''), key=f"edit_mus_link_{i}")
-                    if st.button("Salvar", key=f"save_mus_{i}"):
+                key_edit = f"musicas_{i}"
+                if st.button("✏️ Alterar", key=f"btn_edit_mus_{i}"):
+                    st.session_state.editando = key_edit if st.session_state.editando != key_edit else None
+                    st.rerun()
+
+            if st.session_state.editando == f"musicas_{i}":
+                novo_nome = st.text_input("Nome:", value=mus['nome'], key=f"edit_mus_nome_{i}")
+                novo_link = st.text_input("Link:", value=mus.get('link', ''), key=f"edit_mus_link_{i}")
+                c_s1, c_s2 = st.columns(2)
+                with c_s1:
+                    if st.button("Salvar Alteração", key=f"save_mus_{i}"):
                         st.session_state.dados["musicas"][i]['nome'] = novo_nome
                         st.session_state.dados["musicas"][i]['link'] = novo_link
                         salvar_dados(st.session_state.dados)
+                        st.session_state.editando = None
+                        st.rerun()
+                with c_s2:
+                    if st.button("Cancelar", key=f"canc_mus_{i}"):
+                        st.session_state.editando = None
                         st.rerun()
 
 # --- ABA 4: FOTOS ---
@@ -378,11 +428,23 @@ with t4:
                 if st.button("🗑️ Excluir", key=f"del_fot_{i}"):
                     deletar_item("fotos", i)
             with c2:
-                with st.popover("✏️ Alterar Legenda"):
-                    nova_legenda = st.text_input("Legenda:", value=ft['legenda'], key=f"edit_fot_{i}")
-                    if st.button("Salvar", key=f"save_fot_{i}"):
+                key_edit = f"fotos_{i}"
+                if st.button("✏️ Alterar Legenda", key=f"btn_edit_fot_{i}"):
+                    st.session_state.editando = key_edit if st.session_state.editando != key_edit else None
+                    st.rerun()
+
+            if st.session_state.editando == f"fotos_{i}":
+                nova_legenda = st.text_input("Legenda:", value=ft['legenda'], key=f"edit_fot_txt_{i}")
+                c_s1, c_s2 = st.columns(2)
+                with c_s1:
+                    if st.button("Salvar Alteração", key=f"save_fot_{i}"):
                         st.session_state.dados["fotos"][i]['legenda'] = nova_legenda
                         salvar_dados(st.session_state.dados)
+                        st.session_state.editando = None
+                        st.rerun()
+                with c_s2:
+                    if st.button("Cancelar", key=f"canc_fot_{i}"):
+                        st.session_state.editando = None
                         st.rerun()
 
 # --- ABA 5: DATAS ---
@@ -413,11 +475,23 @@ with t5:
                 if st.button("🗑️ Excluir", key=f"del_dat_{i}"):
                     deletar_item("datas", i)
             with c2:
-                with st.popover("✏️ Alterar"):
-                    novo_tit = st.text_input("Título:", value=dt['titulo'], key=f"edit_dat_{i}")
-                    if st.button("Salvar", key=f"save_dat_{i}"):
+                key_edit = f"datas_{i}"
+                if st.button("✏️ Alterar", key=f"btn_edit_dat_{i}"):
+                    st.session_state.editando = key_edit if st.session_state.editando != key_edit else None
+                    st.rerun()
+
+            if st.session_state.editando == f"datas_{i}":
+                novo_tit = st.text_input("Título:", value=dt['titulo'], key=f"edit_dat_txt_{i}")
+                c_s1, c_s2 = st.columns(2)
+                with c_s1:
+                    if st.button("Salvar Alteração", key=f"save_dat_{i}"):
                         st.session_state.dados["datas"][i]['titulo'] = novo_tit
                         salvar_dados(st.session_state.dados)
+                        st.session_state.editando = None
+                        st.rerun()
+                with c_s2:
+                    if st.button("Cancelar", key=f"canc_dat_{i}"):
+                        st.session_state.editando = None
                         st.rerun()
 
 # --- ABA 6: COMIDAS ---
@@ -448,13 +522,25 @@ with t6:
                 if st.button("🗑️ Excluir", key=f"del_com_{i}"):
                     deletar_item("comidas", i)
             with c2:
-                with st.popover("✏️ Alterar"):
-                    novo_nome = st.text_input("Nome:", value=cm['nome'], key=f"edit_com_nome_{i}")
-                    novo_tipo = st.text_input("Tipo (Casa/Fora):", value=cm['tipo'], key=f"edit_com_tipo_{i}")
-                    if st.button("Salvar", key=f"save_com_{i}"):
+                key_edit = f"comidas_{i}"
+                if st.button("✏️ Alterar", key=f"btn_edit_com_{i}"):
+                    st.session_state.editando = key_edit if st.session_state.editando != key_edit else None
+                    st.rerun()
+
+            if st.session_state.editando == f"comidas_{i}":
+                novo_nome = st.text_input("Nome:", value=cm['nome'], key=f"edit_com_nome_{i}")
+                novo_tipo = st.text_input("Tipo (Casa/Fora):", value=cm['tipo'], key=f"edit_com_tipo_{i}")
+                c_s1, c_s2 = st.columns(2)
+                with c_s1:
+                    if st.button("Salvar Alteração", key=f"save_com_{i}"):
                         st.session_state.dados["comidas"][i]['nome'] = novo_nome
                         st.session_state.dados["comidas"][i]['tipo'] = novo_tipo
                         salvar_dados(st.session_state.dados)
+                        st.session_state.editando = None
+                        st.rerun()
+                with c_s2:
+                    if st.button("Cancelar", key=f"canc_com_{i}"):
+                        st.session_state.editando = None
                         st.rerun()
 
 # --- ABA 7: DATES ---
@@ -485,11 +571,23 @@ with t7:
                 if st.button("🗑️ Excluir", key=f"del_date_{i}"):
                     deletar_item("dates", i)
             with c2:
-                with st.popover("✏️ Alterar"):
-                    nova_ideia = st.text_input("Ideia:", value=dts['ideia'], key=f"edit_date_ideia_{i}")
-                    novo_status = st.text_input("Status:", value=dts['status'], key=f"edit_date_status_{i}")
-                    if st.button("Salvar", key=f"save_date_{i}"):
+                key_edit = f"dates_{i}"
+                if st.button("✏️ Alterar", key=f"btn_edit_date_{i}"):
+                    st.session_state.editando = key_edit if st.session_state.editando != key_edit else None
+                    st.rerun()
+
+            if st.session_state.editando == f"dates_{i}":
+                nova_ideia = st.text_input("Ideia:", value=dts['ideia'], key=f"edit_date_ideia_{i}")
+                novo_status = st.text_input("Status:", value=dts['status'], key=f"edit_date_status_{i}")
+                c_s1, c_s2 = st.columns(2)
+                with c_s1:
+                    if st.button("Salvar Alteração", key=f"save_date_{i}"):
                         st.session_state.dados["dates"][i]['ideia'] = nova_ideia
                         st.session_state.dados["dates"][i]['status'] = novo_status
                         salvar_dados(st.session_state.dados)
+                        st.session_state.editando = None
+                        st.rerun()
+                with c_s2:
+                    if st.button("Cancelar", key=f"canc_date_{i}"):
+                        st.session_state.editando = None
                         st.rerun()
