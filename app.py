@@ -106,6 +106,11 @@ def processar_imagem(uploaded_file):
     if uploaded_file is not None:
         img = Image.open(uploaded_file)
         img = ImageOps.exif_transpose(img) 
+        
+        # Converte imagens com transparência (RGBA/P) para RGB para evitar OSError ao salvar em JPEG
+        if img.mode in ("RGBA", "P"):
+            img = img.convert("RGB")
+            
         img.thumbnail((600, 600))
         buffered = io.BytesIO()
         img.save(buffered, format="JPEG")
@@ -200,7 +205,7 @@ e_admin = False
 if st.session_state.usuario_atual == "Vitória":
     e_admin = st.toggle("🛠️ Modo Edição (Apenas Vitória)")
 
-hoje = obtaining_date_str = obter_data_hoje()
+hoje = obter_data_hoje()
 
 # 6. AS 7 ABAS
 t1, t2, t3, t4, t5, t6, t7 = st.tabs(["💌 Recados", "💭 Sentimentos", "🎵 Músicas", "📸 Fotos", "📅 Datas", "🍕 Comidas", "🥂 Dates"])
@@ -226,7 +231,6 @@ with t1:
     
     st.divider()
     
-    # 1. DESTAQUES DE HOJE
     recados_hoje = [item for item in st.session_state.dados["recados"] if item['data'].startswith(hoje)]
     if recados_hoje:
         st.subheader("🌟 Destaques de Hoje")
@@ -241,11 +245,7 @@ with t1:
                 st.image(item['foto'])
         st.divider()
 
-    # 2. HISTÓRICO DE RECADOS (Renderizado sem expander para evitar o bug de botões)
-    st.subheader("📜 Histórico de Recados")
-    ver_historico = st.toggle("Mostrar Histórico Completo", value=False)
-    
-    if ver_historico:
+    with st.expander("📜 Ver Histórico Completo de Recados", expanded=False):
         if not st.session_state.dados["recados"]:
             st.write("Ainda não há recados salvos.")
         else:
@@ -261,27 +261,27 @@ with t1:
                     st.image(item['foto'])
                     
                 if e_admin:
-                    col_del, col_ed = st.columns(2)
-                    with col_del:
-                        if st.button("🗑️ Excluir", key=f"del_rec_main_{i}"):
+                    c1, c2 = st.columns(2)
+                    with c1:
+                        if st.button("🗑️ Excluir", key=f"del_rec_{i}"):
                             deletar_item("recados", i)
-                    with col_ed:
+                    with c2:
                         key_edit = f"recados_{i}"
-                        if st.button("✏️ Alterar", key=f"btn_edit_rec_main_{i}"):
+                        if st.button("✏️ Alterar", key=f"btn_edit_rec_{i}"):
                             st.session_state.editando = key_edit if st.session_state.editando != key_edit else None
                             st.rerun()
 
                     if st.session_state.editando == f"recados_{i}":
-                        novo_texto = st.text_area("Editar recado:", value=item['texto'], key=f"edit_rec_txt_main_{i}")
+                        novo_texto = st.text_area("Editar recado:", value=item['texto'], key=f"edit_rec_txt_{i}")
                         c_s1, c_s2 = st.columns(2)
                         with c_s1:
-                            if st.button("Salvar Alteração", key=f"save_rec_main_{i}"):
+                            if st.button("Salvar Alteração", key=f"save_rec_{i}"):
                                 st.session_state.dados["recados"][i]['texto'] = novo_texto
                                 salvar_dados(st.session_state.dados)
                                 st.session_state.editando = None
                                 st.rerun()
                         with c_s2:
-                            if st.button("Cancelar", key=f"canc_rec_main_{i}"):
+                            if st.button("Cancelar", key=f"canc_rec_{i}"):
                                 st.session_state.editando = None
                                 st.rerun()
 
