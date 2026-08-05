@@ -104,22 +104,23 @@ def obter_data_hoje():
 
 def processar_imagem(uploaded_file):
     if uploaded_file is not None:
-        img = Image.open(uploaded_file)
-        img = ImageOps.exif_transpose(img) 
-        
-        # Converte imagens com transparência (RGBA/P) para RGB para evitar OSError ao salvar em JPEG
-        if img.mode in ("RGBA", "P"):
-            img = img.convert("RGB")
-            
-        img.thumbnail((600, 600))
-        buffered = io.BytesIO()
-        img.save(buffered, format="JPEG")
-        img_str = base64.b64encode(buffered.getvalue()).decode()
-        return f"data:image/jpeg;base64,{img_str}"
+        try:
+            img = Image.open(uploaded_file)
+            img = ImageOps.exif_transpose(img) 
+            if img.mode in ("RGBA", "P"):
+                img = img.convert("RGB")
+            img.thumbnail((400, 400))
+            buffered = io.BytesIO()
+            img.save(buffered, format="JPEG", quality=70, optimize=True)
+            img_str = base64.b64encode(buffered.getvalue()).decode()
+            return f"data:image/jpeg;base64,{img_str}"
+        except Exception:
+            return None
     return None
 
-# 3. CONEXÃO SEGURA COM O GITHUB
-def ler_dados():
+# 3. CONEXÃO SEGURA COM O GITHUB (COM CACHE)
+@st.cache_data(ttl=5)
+def ler_dados_github(token, repo_name):
     opcoes_padrao = ["Feliz 😊", "Ansiosa 😰", "Cansada 🥱", "Empolgada ✨", "Triste 😢", "Com Saudade ❤️", "Estressada 🤯"]
     estrutura_padrao = {
         "recados": [], "sentimentos": [], "musicas": [], "fotos": [], 
@@ -127,20 +128,25 @@ def ler_dados():
         "opcoes_sentimentos": opcoes_padrao
     }
     try:
-        if "GITHUB_TOKEN" not in st.secrets or "GITHUB_REPO" not in st.secrets:
-            return estrutura_padrao
-            
-        g = Github(st.secrets["GITHUB_TOKEN"])
-        repo = g.get_repo(st.secrets["GITHUB_REPO"])
+        g = Github(token)
+        repo = g.get_repo(repo_name)
         file_content = repo.get_contents("dados_app.json")
         dados = json.loads(file_content.decoded_content.decode())
-        
         if "opcoes_sentimentos" not in dados:
             dados["opcoes_sentimentos"] = opcoes_padrao
-            
         return dados
     except Exception:
         return estrutura_padrao
+
+def ler_dados():
+    if "GITHUB_TOKEN" in st.secrets and "GITHUB_REPO" in st.secrets:
+        return ler_dados_github(st.secrets["GITHUB_TOKEN"], st.secrets["GITHUB_REPO"])
+    opcoes_padrao = ["Feliz 😊", "Ansiosa 😰", "Cansada 🥱", "Empolgada ✨", "Triste 😢", "Com Saudade ❤️", "Estressada 🤯"]
+    return {
+        "recados": [], "sentimentos": [], "musicas": [], "fotos": [], 
+        "datas": [], "comidas": [], "dates": [], 
+        "opcoes_sentimentos": opcoes_padrao
+    }
 
 def salvar_dados(dados):
     try:
@@ -156,6 +162,7 @@ def salvar_dados(dados):
             repo.update_file(contents.path, "Atualizando dados", content_str, contents.sha)
         except Exception:
             repo.create_file("dados_app.json", "Criando banco de dados", content_str)
+        st.cache_data.clear()
         return True
     except Exception as e:
         st.error(f"Erro ao salvar dados no GitHub: {e}")
