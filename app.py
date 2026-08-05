@@ -216,7 +216,7 @@ with t1:
             </div>
             """, unsafe_allow_html=True)
             if item.get('foto'):
-                st.image(item['foto'], use_column_width=True)
+                st.image(item['foto'])
         st.divider()
 
     with st.expander("📜 Ver Histórico Completo de Recados", expanded=False):
@@ -232,7 +232,7 @@ with t1:
                 """, unsafe_allow_html=True)
                 
                 if item.get('foto'):
-                    st.image(item['foto'], use_column_width=True)
+                    st.image(item['foto'])
                     
                 if e_admin:
                     c1, c2 = st.columns(2)
@@ -353,7 +353,7 @@ with t4:
     st.subheader("📜 Álbum")
     for i, ft in enumerate(st.session_state.dados["fotos"]):
         st.markdown(f"<div class='historico-card'><b>{ft['legenda']}</b><br><small>Por {ft['autor']} em {ft['data']}</small></div>", unsafe_allow_html=True)
-        st.image(ft['foto'], use_column_width=True)
+        st.image(ft['foto'])
         if e_admin:
             c1, c2 = st.columns(2)
             with c1:
