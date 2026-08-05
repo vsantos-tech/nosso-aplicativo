@@ -91,9 +91,10 @@ def processar_imagem(uploaded_file):
             img = ImageOps.exif_transpose(img) 
             if img.mode in ("RGBA", "P"):
                 img = img.convert("RGB")
-            img.thumbnail((350, 350))
+            # Aumentado para 800px de resolução máxima com 85% de qualidade
+            img.thumbnail((800, 800))
             buffered = io.BytesIO()
-            img.save(buffered, format="JPEG", quality=50, optimize=True)
+            img.save(buffered, format="JPEG", quality=85, optimize=True)
             img_str = base64.b64encode(buffered.getvalue()).decode()
             return f"data:image/jpeg;base64,{img_str}"
         except Exception:
@@ -410,7 +411,7 @@ with t4:
                 "autor": st.session_state.usuario_atual,
                 "legenda": legenda,
                 "foto": img_b64,
-                "data": obter_data_hora()
+                "data": obtaining_date := obter_data_hora()
             })
             if salvar_dados(st.session_state.dados):
                 st.success("Foto adicionada!")
