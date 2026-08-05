@@ -10,7 +10,7 @@ import os
 # 1. CONFIGURAÇÃO DA PÁGINA
 st.set_page_config(page_title="Nosso Aplicativo 💗", page_icon="💗", layout="centered")
 
-# Bloqueia tradução automática do Chrome para evitar erro de DOM (removeChild)
+# Impede erros de tradução do Chrome
 st.markdown('<meta name="google" content="notranslate">', unsafe_allow_html=True)
 
 def carregar_estilo_fundo():
@@ -96,11 +96,6 @@ def processar_imagem(uploaded_file):
     return None
 
 # 3. CONEXÃO SEGURA COM O GITHUB
-def conectar_github():
-    if "GITHUB_TOKEN" in st.secrets:
-        return Github(st.secrets["GITHUB_TOKEN"])
-    return None
-
 def ler_dados():
     opcoes_padrao = ["Feliz 😊", "Ansiosa 😰", "Cansada 🥱", "Empolgada ✨", "Triste 😢", "Com Saudade ❤️", "Estressada 🤯"]
     estrutura_padrao = {
@@ -109,10 +104,10 @@ def ler_dados():
         "opcoes_sentimentos": opcoes_padrao
     }
     try:
-        g = conectar_github()
-        if not g or "GITHUB_REPO" not in st.secrets:
+        if "GITHUB_TOKEN" not in st.secrets or "GITHUB_REPO" not in st.secrets:
             return estrutura_padrao
             
+        g = Github(st.secrets["GITHUB_TOKEN"])
         repo = g.get_repo(st.secrets["GITHUB_REPO"])
         file_content = repo.get_contents("dados_app.json")
         dados = json.loads(file_content.decoded_content.decode())
@@ -126,11 +121,11 @@ def ler_dados():
 
 def salvar_dados(dados):
     try:
-        g = conectar_github()
-        if not g or "GITHUB_REPO" not in st.secrets:
-            st.error("Erro nas chaves do GitHub em Secrets.")
+        if "GITHUB_TOKEN" not in st.secrets or "GITHUB_REPO" not in st.secrets:
+            st.error("Configure as chaves GITHUB_TOKEN e GITHUB_REPO nos Secrets!")
             return False
             
+        g = Github(st.secrets["GITHUB_TOKEN"])
         repo = g.get_repo(st.secrets["GITHUB_REPO"])
         content_str = json.dumps(dados, indent=4)
         try:
@@ -140,7 +135,7 @@ def salvar_dados(dados):
             repo.create_file("dados_app.json", "Criando banco de dados", content_str)
         return True
     except Exception as e:
-        st.error(f"Erro ao salvar: {e}")
+        st.error(f"Erro ao salvar dados no GitHub: {e}")
         return False
 
 def deletar_item(categoria, index):
