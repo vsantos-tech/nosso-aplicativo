@@ -91,15 +91,24 @@ def processar_imagem(uploaded_file):
         return f"data:image/jpeg;base64,{img_str}"
     return None
 
-# 3. CONEXÃO COM O GITHUB E ESTRUTURA DE DADOS
-@st.cache_resource
+# 3. CONEXÃO SEGURA COM O GITHUB
 def conectar_github():
-    return Github(st.secrets["GITHUB_TOKEN"])
+    if "GITHUB_TOKEN" in st.secrets:
+        return Github(st.secrets["GITHUB_TOKEN"])
+    return None
 
 def ler_dados():
     opcoes_padrao = ["Feliz 😊", "Ansiosa 😰", "Cansada 🥱", "Empolgada ✨", "Triste 😢", "Com Saudade ❤️", "Estressada 🤯"]
+    estrutura_padrao = {
+        "recados": [], "sentimentos": [], "musicas": [], "fotos": [], 
+        "datas": [], "comidas": [], "dates": [], 
+        "opcoes_sentimentos": opcoes_padrao
+    }
     try:
         g = conectar_github()
+        if not g or "GITHUB_REPO" not in st.secrets:
+            return estrutura_padrao
+            
         repo = g.get_repo(st.secrets["GITHUB_REPO"])
         file_content = repo.get_contents("dados_app.json")
         dados = json.loads(file_content.decoded_content.decode())
@@ -109,21 +118,21 @@ def ler_dados():
             
         return dados
     except Exception:
-        return {
-            "recados": [], "sentimentos": [], "musicas": [], "fotos": [], 
-            "datas": [], "comidas": [], "dates": [], 
-            "opcoes_sentimentos": opcoes_padrao
-        }
+        return estrutura_padrao
 
 def salvar_dados(dados):
     try:
         g = conectar_github()
+        if not g or "GITHUB_REPO" not in st.secrets:
+            st.error("Erro nas chaves do GitHub em Secrets.")
+            return False
+            
         repo = g.get_repo(st.secrets["GITHUB_REPO"])
         content_str = json.dumps(dados, indent=4)
         try:
             contents = repo.get_contents("dados_app.json")
             repo.update_file(contents.path, "Atualizando dados", content_str, contents.sha)
-        except:
+        except Exception:
             repo.create_file("dados_app.json", "Criando banco de dados", content_str)
         return True
     except Exception as e:
@@ -197,7 +206,6 @@ with t1:
     
     st.divider()
     
-    # 1. MOSTRA APENAS O DESTAQUE DE HOJE NA TELA PRINCIPAL
     recados_hoje = [item for item in st.session_state.dados["recados"] if item['data'].startswith(hoje)]
     if recados_hoje:
         st.subheader("🌟 Destaques de Hoje")
@@ -212,7 +220,6 @@ with t1:
                 st.image(item['foto'], use_container_width=True)
         st.divider()
 
-    # 2. HISTÓRICO COMPLETO EM UM BOTÃO EXPANSÍVEL (EXPANDER)
     with st.expander("📜 Ver Histórico Completo de Recados", expanded=False):
         if not st.session_state.dados["recados"]:
             st.write("Ainda não há recados salvos.")
