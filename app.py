@@ -14,18 +14,16 @@ st.set_page_config(page_title="Nosso Aplicativo 💗", page_icon="💗", layout=
 st.markdown('<meta name="google" content="notranslate">', unsafe_allow_html=True)
 
 def carregar_estilo_fundo():
-    bg_image_path = None
-    for ext in ["fundo.png", "fundo.jpg", "fundo.jpeg"]:
+    bg_style = "background: linear-gradient(135deg, #FFD1DC 0%, #FFB07C 50%, #E65C83 100%);"
+    for ext in ["fundo.jpg", "fundo.png", "fundo.jpeg"]:
         if os.path.exists(ext):
-            bg_image_path = ext
-            break
-
-    if bg_image_path:
-        with open(bg_image_path, "rb") as f:
-            bin_str = base64.b64encode(f.read()).decode()
-        bg_style = f'background-image: url("data:image/png;base64,{bin_str}");'
-    else:
-        bg_style = "background: linear-gradient(135deg, #FFD1DC 0%, #FFB07C 50%, #E65C83 100%);"
+            try:
+                with open(ext, "rb") as f:
+                    bin_str = base64.b64encode(f.read()).decode()
+                bg_style = f'background-image: url("data:image/jpeg;base64,{bin_str}");'
+                break
+            except Exception:
+                pass
 
     css = f"""
         <style>
@@ -111,7 +109,7 @@ def processar_imagem(uploaded_file):
                 img = img.convert("RGB")
             img.thumbnail((400, 400))
             buffered = io.BytesIO()
-            img.save(buffered, format="JPEG", quality=65, optimize=True)
+            img.save(buffered, format="JPEG", quality=60, optimize=True)
             img_str = base64.b64encode(buffered.getvalue()).decode()
             return f"data:image/jpeg;base64,{img_str}"
         except Exception:
