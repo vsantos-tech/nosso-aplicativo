@@ -229,7 +229,7 @@ with t1:
     recados_hoje = [item for item in st.session_state.dados["recados"] if item['data'].startswith(hoje)]
     if recados_hoje:
         st.subheader("🌟 Destaques de Hoje")
-        for item in recados_hoje:
+        for idx, item in enumerate(recados_hoje):
             st.markdown(f"""
             <div class="destaque-card">
                 <b>{item['autor']}</b> - <small>{item['data']}</small><br>
@@ -256,11 +256,11 @@ with t1:
                     st.image(item['foto'])
                     
                 if e_admin:
-                    c1, c2 = st.columns(2)
-                    with c1:
-                        if st.button("🗑️ Excluir", key=f"del_rec_{i}"):
+                    col_del, col_ed = st.columns(2)
+                    with col_del:
+                        if st.button("🗑️ Excluir", key=f"del_rec_hist_{i}"):
                             deletar_item("recados", i)
-                    with c2:
+                    with col_ed:
                         key_edit = f"recados_{i}"
                         if st.button("✏️ Alterar", key=f"btn_edit_rec_{i}"):
                             st.session_state.editando = key_edit if st.session_state.editando != key_edit else None
