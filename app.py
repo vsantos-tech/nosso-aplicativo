@@ -5,7 +5,6 @@ from datetime import datetime, timedelta, timezone
 import base64
 from PIL import Image, ImageOps
 import io
-import os
 
 # 1. CONFIGURAÇÃO DA PÁGINA
 st.set_page_config(page_title="Nosso Aplicativo 💗", page_icon="💗", layout="centered")
@@ -13,82 +12,67 @@ st.set_page_config(page_title="Nosso Aplicativo 💗", page_icon="💗", layout=
 # Impede erros de tradução do Chrome
 st.markdown('<meta name="google" content="notranslate">', unsafe_allow_html=True)
 
-def carregar_estilo_fundo():
-    bg_style = "background: linear-gradient(135deg, #FFD1DC 0%, #FFB07C 50%, #E65C83 100%);"
-    for ext in ["fundo.jpg", "fundo.png", "fundo.jpeg"]:
-        if os.path.exists(ext):
-            try:
-                with open(ext, "rb") as f:
-                    bin_str = base64.b64encode(f.read()).decode()
-                bg_style = f'background-image: url("data:image/jpeg;base64,{bin_str}");'
-                break
-            except Exception:
-                pass
+# Fundo ultra-leve em CSS (sem carregar imagem pesada em base64 no startup)
+css = """
+    <style>
+    .stApp {
+        background: linear-gradient(135deg, #FFD1DC 0%, #FFB07C 50%, #E65C83 100%) !important;
+        background-attachment: fixed !important;
+    }
+    
+    .stTextInput input, .stTextArea textarea, div[data-baseweb="select"] {
+        color: #1A1A1A !important;
+        background-color: #FFFFFF !important;
+        -webkit-text-fill-color: #1A1A1A !important;
+        border-radius: 8px !important;
+    }
+    
+    .stButton>button { 
+        background: linear-gradient(90deg, #E65C83 0%, #F07865 100%); 
+        color: white !important; 
+        border-radius: 10px; 
+        border: none; 
+        font-weight: bold; 
+    }
+    
+    .historico-card { 
+        background-color: #FFFFFF !important; 
+        padding: 15px; 
+        border-radius: 10px; 
+        margin-bottom: 10px; 
+        box-shadow: 0 2px 5px rgba(0,0,0,0.1); 
+        border-left: 5px solid #E65C83;
+        color: #1A1A1A !important;
+    }
+    
+    .destaque-card { 
+        background-color: #FFFFFF !important; 
+        padding: 15px; 
+        border-radius: 10px; 
+        margin-bottom: 10px; 
+        box-shadow: 0 2px 5px rgba(0,0,0,0.1); 
+        border-left: 5px solid #FFD700;
+        color: #1A1A1A !important;
+    }
 
-    css = f"""
-        <style>
-        .stApp {{
-            {bg_style}
-            background-size: cover !important;
-            background-position: center !important;
-            background-attachment: fixed !important;
-        }}
-        
-        .stTextInput input, .stTextArea textarea, div[data-baseweb="select"] {{
-            color: #1A1A1A !important;
-            background-color: #FFFFFF !important;
-            -webkit-text-fill-color: #1A1A1A !important;
-            border-radius: 8px !important;
-        }}
-        
-        .stButton>button {{ 
-            background: linear-gradient(90deg, #E65C83 0%, #F07865 100%); 
-            color: white !important; 
-            border-radius: 10px; 
-            border: none; 
-            font-weight: bold; 
-        }}
-        
-        .historico-card {{ 
-            background-color: #FFFFFF !important; 
-            padding: 15px; 
-            border-radius: 10px; 
-            margin-bottom: 10px; 
-            box-shadow: 0 2px 5px rgba(0,0,0,0.1); 
-            border-left: 5px solid #E65C83;
-            color: #1A1A1A !important;
-        }}
-        
-        .destaque-card {{ 
-            background-color: #FFFFFF !important; 
-            padding: 15px; 
-            border-radius: 10px; 
-            margin-bottom: 10px; 
-            box-shadow: 0 2px 5px rgba(0,0,0,0.1); 
-            border-left: 5px solid #FFD700;
-            color: #1A1A1A !important;
-        }}
+    .historico-card b, .destaque-card b {
+        color: #4A1228 !important;
+        font-weight: bold;
+    }
 
-        .historico-card b, .destaque-card b {{
-            color: #4A1228 !important;
-            font-weight: bold;
-        }}
+    .historico-card p, .destaque-card p {
+        color: #1A1A1A !important;
+        font-size: 1rem;
+        margin-top: 8px;
+        margin-bottom: 0px;
+    }
 
-        .historico-card p, .destaque-card p {{
-            color: #1A1A1A !important;
-            font-size: 1rem;
-            margin-top: 8px;
-            margin-bottom: 0px;
-        }}
-
-        .historico-card small, .destaque-card small {{
-            color: #666666 !important;
-        }}
-        </style>
-    """
-    st.markdown(css, unsafe_allow_html=True)
-
-carregar_estilo_fundo()
+    .historico-card small, .destaque-card small {
+        color: #666666 !important;
+    }
+    </style>
+"""
+st.markdown(css, unsafe_allow_html=True)
 
 # 2. FUNÇÕES DE DATA E IMAGEM
 def obter_fuso_horario():
@@ -107,38 +91,43 @@ def processar_imagem(uploaded_file):
             img = ImageOps.exif_transpose(img) 
             if img.mode in ("RGBA", "P"):
                 img = img.convert("RGB")
-            img.thumbnail((400, 400))
+            img.thumbnail((350, 350))
             buffered = io.BytesIO()
-            img.save(buffered, format="JPEG", quality=60, optimize=True)
+            img.save(buffered, format="JPEG", quality=50, optimize=True)
             img_str = base64.b64encode(buffered.getvalue()).decode()
             return f"data:image/jpeg;base64,{img_str}"
         except Exception:
             return None
     return None
 
-# 3. CONEXÃO COM O GITHUB
-def ler_dados():
-    opcoes_padrao = ["Feliz 😊", "Ansiosa 😰", "Cansada 🥱", "Empolgada ✨", "Triste 😢", "Com Saudade ❤️", "Estressada 🤯"]
+# 3. CONEXÃO SEGURA COM O GITHUB (UTILIZANDO CACHE)
+@st.cache_data(ttl=600)
+def ler_dados_github(token, repo_name):
+    opcoes_padrao = ["Feliz 😊", "Ansiosa 😰", "Cansada 🥱", "Empolgada ✨", "Triste 😢", "Com Saudade ❤️", "Estressada 🤯", "Querendo colinho 😭"]
     estrutura_padrao = {
         "recados": [], "sentimentos": [], "musicas": [], "fotos": [], 
         "datas": [], "comidas": [], "dates": [], 
         "opcoes_sentimentos": opcoes_padrao
     }
     try:
-        if "GITHUB_TOKEN" not in st.secrets or "GITHUB_REPO" not in st.secrets:
-            return estrutura_padrao
-            
-        g = Github(st.secrets["GITHUB_TOKEN"])
-        repo = g.get_repo(st.secrets["GITHUB_REPO"])
+        g = Github(token)
+        repo = g.get_repo(repo_name)
         file_content = repo.get_contents("dados_app.json")
         dados = json.loads(file_content.decoded_content.decode())
-        
         if "opcoes_sentimentos" not in dados:
             dados["opcoes_sentimentos"] = opcoes_padrao
-            
         return dados
     except Exception:
         return estrutura_padrao
+
+def ler_dados():
+    if "GITHUB_TOKEN" in st.secrets and "GITHUB_REPO" in st.secrets:
+        return ler_dados_github(st.secrets["GITHUB_TOKEN"], st.secrets["GITHUB_REPO"])
+    return {
+        "recados": [], "sentimentos": [], "musicas": [], "fotos": [], 
+        "datas": [], "comidas": [], "dates": [], 
+        "opcoes_sentimentos": ["Feliz 😊", "Ansiosa 😰", "Cansada 🥱", "Empolgada ✨", "Triste 😢", "Com Saudade ❤️", "Estressada 🤯", "Querendo colinho 😭"]
+    }
 
 def salvar_dados(dados):
     try:
@@ -154,6 +143,7 @@ def salvar_dados(dados):
             repo.update_file(contents.path, "Atualizando dados", content_str, contents.sha)
         except Exception:
             repo.create_file("dados_app.json", "Criando banco de dados", content_str)
+        st.cache_data.clear()
         return True
     except Exception as e:
         st.error(f"Erro ao salvar dados no GitHub: {e}")
