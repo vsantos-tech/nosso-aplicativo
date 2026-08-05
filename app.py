@@ -258,7 +258,7 @@ with t1:
                         if st.button("🗑️ Excluir", key=f"del_rec_{i}"):
                             deletar_item("recados", i)
                     with c2:
-                        with st.expander("✏️ Alterar"):
+                        with st.popover("✏️ Alterar"):
                             novo_texto = st.text_area("Novo texto:", value=item['texto'], key=f"edit_rec_{i}")
                             if st.button("Salvar", key=f"save_rec_{i}"):
                                 st.session_state.dados["recados"][i]['texto'] = novo_texto
@@ -271,7 +271,7 @@ with t2:
     opcoes_atuais = st.session_state.dados.get("opcoes_sentimentos", [])
     
     if e_admin:
-        with st.expander("🛠️ Adicionar Nova Opção de Sentimento"):
+        with st.popover("🛠️ Adicionar Nova Opção de Sentimento"):
             novo_sentimento_opcao = st.text_input("Escreva o novo sentimento (ex: Animada 🥳):")
             if st.button("➕ Adicionar à Lista"):
                 if novo_sentimento_opcao and novo_sentimento_opcao not in opcoes_atuais:
@@ -303,7 +303,7 @@ with t2:
                 if st.button("🗑️ Excluir", key=f"del_sen_{i}"):
                     deletar_item("sentimentos", i)
             with c2:
-                with st.expander("✏️ Alterar"):
+                with st.popover("✏️ Alterar"):
                     novo_sen = st.text_input("Editar sentimento:", value=sen['sentimentos'], key=f"edit_sen_{i}")
                     if st.button("Salvar", key=f"save_sen_{i}"):
                         st.session_state.dados["sentimentos"][i]['sentimentos'] = novo_sen
@@ -339,7 +339,7 @@ with t3:
                 if st.button("🗑️ Excluir", key=f"del_mus_{i}"):
                     deletar_item("musicas", i)
             with c2:
-                with st.expander("✏️ Alterar"):
+                with st.popover("✏️ Alterar"):
                     novo_nome = st.text_input("Nome:", value=mus['nome'], key=f"edit_mus_nome_{i}")
                     novo_link = st.text_input("Link:", value=mus.get('link', ''), key=f"edit_mus_link_{i}")
                     if st.button("Salvar", key=f"save_mus_{i}"):
@@ -378,7 +378,7 @@ with t4:
                 if st.button("🗑️ Excluir", key=f"del_fot_{i}"):
                     deletar_item("fotos", i)
             with c2:
-                with st.expander("✏️ Alterar Legenda"):
+                with st.popover("✏️ Alterar Legenda"):
                     nova_legenda = st.text_input("Legenda:", value=ft['legenda'], key=f"edit_fot_{i}")
                     if st.button("Salvar", key=f"save_fot_{i}"):
                         st.session_state.dados["fotos"][i]['legenda'] = nova_legenda
@@ -413,7 +413,7 @@ with t5:
                 if st.button("🗑️ Excluir", key=f"del_dat_{i}"):
                     deletar_item("datas", i)
             with c2:
-                with st.expander("✏️ Alterar"):
+                with st.popover("✏️ Alterar"):
                     novo_tit = st.text_input("Título:", value=dt['titulo'], key=f"edit_dat_{i}")
                     if st.button("Salvar", key=f"save_dat_{i}"):
                         st.session_state.dados["datas"][i]['titulo'] = novo_tit
@@ -448,7 +448,7 @@ with t6:
                 if st.button("🗑️ Excluir", key=f"del_com_{i}"):
                     deletar_item("comidas", i)
             with c2:
-                with st.expander("✏️ Alterar"):
+                with st.popover("✏️ Alterar"):
                     novo_nome = st.text_input("Nome:", value=cm['nome'], key=f"edit_com_nome_{i}")
                     novo_tipo = st.text_input("Tipo (Casa/Fora):", value=cm['tipo'], key=f"edit_com_tipo_{i}")
                     if st.button("Salvar", key=f"save_com_{i}"):
@@ -485,7 +485,7 @@ with t7:
                 if st.button("🗑️ Excluir", key=f"del_date_{i}"):
                     deletar_item("dates", i)
             with c2:
-                with st.expander("✏️ Alterar"):
+                with st.popover("✏️ Alterar"):
                     nova_ideia = st.text_input("Ideia:", value=dts['ideia'], key=f"edit_date_ideia_{i}")
                     novo_status = st.text_input("Status:", value=dts['status'], key=f"edit_date_status_{i}")
                     if st.button("Salvar", key=f"save_date_{i}"):
