@@ -10,6 +10,9 @@ import os
 # 1. CONFIGURAÇÃO DA PÁGINA
 st.set_page_config(page_title="Nosso Aplicativo 💗", page_icon="💗", layout="centered")
 
+# Bloqueia tradução automática do Chrome para evitar erro de DOM (removeChild)
+st.markdown('<meta name="google" content="notranslate">', unsafe_allow_html=True)
+
 def carregar_estilo_fundo():
     bg_image_path = None
     for ext in ["fundo.png", "fundo.jpg", "fundo.jpeg"]:
@@ -33,8 +36,6 @@ def carregar_estilo_fundo():
             background-attachment: fixed !important;
         }}
         
-        h1, h2, h3, p, span, div {{ color: #4A1228 !important; }}
-        
         .stTextInput input, .stTextArea textarea, div[data-baseweb="select"] {{
             color: #4A1228 !important;
             background-color: #FFFFFF !important;
@@ -50,19 +51,22 @@ def carregar_estilo_fundo():
             font-weight: bold; 
         }}
         
-        .historico-card, .destaque-card {{ 
+        .historico-card {{ 
             background-color: rgba(255, 255, 255, 0.95); 
             padding: 15px; 
             border-radius: 10px; 
             margin-bottom: 10px; 
             box-shadow: 0 2px 5px rgba(0,0,0,0.1); 
+            border-left: 5px solid #E65C83;
         }}
-        .historico-card {{ border-left: 5px solid #E65C83; }}
-        .destaque-card {{ border-left: 5px solid #FFD700; }}
         
-        .historico-card b, .historico-card p, .historico-card small, .historico-card a,
-        .destaque-card b, .destaque-card p, .destaque-card small, .destaque-card a {{
-            color: #4A1228 !important;
+        .destaque-card {{ 
+            background-color: rgba(255, 255, 255, 0.95); 
+            padding: 15px; 
+            border-radius: 10px; 
+            margin-bottom: 10px; 
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1); 
+            border-left: 5px solid #FFD700;
         }}
         </style>
     """
