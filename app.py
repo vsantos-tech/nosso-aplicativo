@@ -37,9 +37,9 @@ def carregar_estilo_fundo():
         }}
         
         .stTextInput input, .stTextArea textarea, div[data-baseweb="select"] {{
-            color: #4A1228 !important;
+            color: #1A1A1A !important;
             background-color: #FFFFFF !important;
-            -webkit-text-fill-color: #4A1228 !important;
+            -webkit-text-fill-color: #1A1A1A !important;
             border-radius: 8px !important;
         }}
         
@@ -52,21 +52,39 @@ def carregar_estilo_fundo():
         }}
         
         .historico-card {{ 
-            background-color: rgba(255, 255, 255, 0.95); 
+            background-color: #FFFFFF !important; 
             padding: 15px; 
             border-radius: 10px; 
             margin-bottom: 10px; 
             box-shadow: 0 2px 5px rgba(0,0,0,0.1); 
             border-left: 5px solid #E65C83;
+            color: #1A1A1A !important;
         }}
         
         .destaque-card {{ 
-            background-color: rgba(255, 255, 255, 0.95); 
+            background-color: #FFFFFF !important; 
             padding: 15px; 
             border-radius: 10px; 
             margin-bottom: 10px; 
             box-shadow: 0 2px 5px rgba(0,0,0,0.1); 
             border-left: 5px solid #FFD700;
+            color: #1A1A1A !important;
+        }}
+
+        .historico-card b, .destaque-card b {{
+            color: #4A1228 !important;
+            font-weight: bold;
+        }}
+
+        .historico-card p, .destaque-card p {{
+            color: #1A1A1A !important;
+            font-size: 1rem;
+            margin-top: 8px;
+            margin-bottom: 0px;
+        }}
+
+        .historico-card small, .destaque-card small {{
+            color: #666666 !important;
         }}
         </style>
     """
@@ -212,7 +230,7 @@ with t1:
             st.markdown(f"""
             <div class="destaque-card">
                 <b>{item['autor']}</b> - <small>{item['data']}</small><br>
-                <p style="margin-top: 10px;">{item['texto']}</p>
+                <p>{item['texto']}</p>
             </div>
             """, unsafe_allow_html=True)
             if item.get('foto'):
@@ -227,7 +245,7 @@ with t1:
                 st.markdown(f"""
                 <div class="historico-card">
                     <b>{item['autor']}</b> - <small>{item['data']}</small><br>
-                    <p style="margin-top: 10px;">{item['texto']}</p>
+                    <p>{item['texto']}</p>
                 </div>
                 """, unsafe_allow_html=True)
                 
