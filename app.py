@@ -12,7 +12,7 @@ st.set_page_config(page_title="Nosso Aplicativo 💗", page_icon="💗", layout=
 # Impede erros de tradução do Chrome
 st.markdown('<meta name="google" content="notranslate">', unsafe_allow_html=True)
 
-# Fundo ultra-leve em CSS (sem carregar imagem pesada em base64 no startup)
+# Fundo em CSS
 css = """
     <style>
     .stApp {
@@ -100,7 +100,7 @@ def processar_imagem(uploaded_file):
             return None
     return None
 
-# 3. CONEXÃO SEGURA COM O GITHUB (UTILIZANDO CACHE)
+# 3. CONEXÃO SEGURA COM O GITHUB
 @st.cache_data(ttl=600)
 def ler_dados_github(token, repo_name):
     opcoes_padrao = ["Feliz 😊", "Ansiosa 😰", "Cansada 🥱", "Empolgada ✨", "Triste 😢", "Com Saudade ❤️", "Estressada 🤯", "Querendo colinho 😭"]
@@ -518,7 +518,7 @@ with t6:
     st.divider()
     st.subheader("📜 Lista de Comidas")
     for i, cm in enumerate(st.session_state.dados["comidas"]):
-        st.markdown(f"<div class='historico-card'>🍕 <b>{cm['nome']}</b> ({cm['tipo']})<br><small>Adicionado por {cm['autor']} em {cm['data']}</small></div>", unsafe_allow_html=True)
+        st.markdown(f"<div class='historico-card'><b>{cm['nome']}</b> ({cm['tipo']})<br><small>Adicionado por {cm['autor']} em {cm['data']}</small></div>", unsafe_allow_html=True)
         if e_admin:
             c1, c2 = st.columns(2)
             with c1:
@@ -567,7 +567,7 @@ with t7:
     st.divider()
     st.subheader("📜 Nossa Lista de Dates")
     for i, dts in enumerate(st.session_state.dados["dates"]):
-        st.markdown(f"<div class='historico-card'>🥂 <b>{dts['ideia']}</b> - {dts['status']}<br><small>Adicionado por {dts['autor']} em {dts['data']}</small></div>", unsafe_allow_html=True)
+        st.markdown(f"<div class='historico-card'><b>{dts['ideia']}</b> - {dts['status']}<br><small>Adicionado por {dts['autor']} em {dts['data']}</small></div>", unsafe_allow_html=True)
         if e_admin:
             c1, c2 = st.columns(2)
             with c1:
