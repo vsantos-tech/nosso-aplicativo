@@ -202,7 +202,7 @@ e_admin = False
 if st.session_state.usuario_atual == "Vitória":
     e_admin = st.toggle("🛠️ Modo Edição (Apenas Vitória)")
 
-hoje = obtaining_today := obter_data_hoje()
+hoje = obter_data_hoje()
 
 # 6. AS 7 ABAS
 t1, t2, t3, t4, t5, t6, t7 = st.tabs(["💌 Recados", "💭 Sentimentos", "🎵 Músicas", "📸 Fotos", "📅 Datas", "🍕 Comidas", "🥂 Dates"])
