@@ -3,6 +3,8 @@ from github import Github
 import json
 from datetime import datetime, timedelta, timezone
 import base64
+from PIL import Image, ImageOps
+import io
 
 # 1. CONFIGURAÇÃO DA PÁGINA
 st.set_page_config(page_title="Nosso Aplicativo 💗", page_icon="💗", layout="centered")
@@ -96,11 +98,16 @@ def obter_data_hoje():
 def processar_imagem(uploaded_file):
     if uploaded_file is not None:
         try:
-            # Lê os bytes originais da foto SEM NENHUMA COMPRESSÃO
-            bytes_data = uploaded_file.getvalue()
-            tipo_mime = uploaded_file.type if uploaded_file.type else "image/jpeg"
-            img_str = base64.b64encode(bytes_data).decode()
-            return f"data:{tipo_mime};base64,{img_str}"
+            img = Image.open(uploaded_file)
+            img = ImageOps.exif_transpose(img) 
+            if img.mode in ("RGBA", "P"):
+                img = img.convert("RGB")
+            # Redimensionamento equilibrado (1000px max) para manter excelente qualidade sem estourar o servidor
+            img.thumbnail((1000, 1000))
+            buffered = io.BytesIO()
+            img.save(buffered, format="JPEG", quality=90, optimize=True)
+            img_str = base64.b64encode(buffered.getvalue()).decode()
+            return f"data:image/jpeg;base64,{img_str}"
         except Exception:
             return None
     return None
